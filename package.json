@@ -1,0 +1,25 @@
+{
+  "name": "tmmb-invoice-portal",
+  "version": "1.0.0",
+  "description": "Creator Invoice Portal with Notion Integration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "@notionhq/client": "^2.2.15",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "handlebars": "^4.7.8",
+    "multer": "^1.4.5-lts.1",
+    "puppeteer": "^24.12.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
