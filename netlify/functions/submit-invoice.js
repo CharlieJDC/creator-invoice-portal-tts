@@ -1,4 +1,4 @@
-// netlify/functions/submit-invoice.js - Fixed version based on what was working
+// netlify/functions/submit-invoice.js - Fixed syntax errors
 const { Client } = require('@notionhq/client');
 
 // Initialize Notion client
@@ -246,7 +246,7 @@ exports.handler = async (event, context) => {
               },
             },
           ],
-        ];
+        };
       }
     }
 
