@@ -1093,10 +1093,25 @@
         }
         
         function submitInvoice() {
+            // Prevent double submission
+            const submitBtn = event.target;
+            if (submitBtn.disabled) {
+                console.log('Submit already in progress, ignoring click');
+                return;
+            }
+            
+            // Immediately disable button
+            submitBtn.disabled = true;
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Submitting to Notion...';
+            
             // Collect all form data
             const selectedTier = document.querySelector('input[name="tier"]:checked');
             if (!selectedTier && document.getElementById('invoiceTypeSelect').value === 'retainer') {
                 alert('Please select a retainer tier before submitting.');
+                // Re-enable button on validation error
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
                 return;
             }
             
@@ -1152,11 +1167,7 @@
                 }
             }
             
-            // Show loading state
-            const submitBtn = event.target;
-            const originalText = submitBtn.textContent;
-            submitBtn.textContent = 'Submitting to Notion...';
-            submitBtn.disabled = true;
+            console.log('Submitting form data:', formData.name, formData.email, formData.period);
             
             // Create FormData for file uploads
             const formDataWithFiles = new FormData();
@@ -1172,8 +1183,15 @@
                 method: 'POST',
                 body: formDataWithFiles
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
             .then(result => {
+                console.log('Success response:', result);
                 if (result.success) {
                     // Update success email
                     const email = document.getElementById('emailInput').value || 'john@example.com';
@@ -1181,17 +1199,21 @@
                     goToStep(5);
                 } else {
                     alert('Error submitting invoice: ' + result.error);
+                    // Re-enable button on error
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Error submitting invoice. Please try again.');
-            })
-            .finally(() => {
-                // Reset button
-                submitBtn.textContent = originalText;
+                alert('Error submitting invoice: ' + error.message);
+                // Re-enable button on error
                 submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
             });
+            
+            // Note: Button is intentionally NOT re-enabled on success
+            // It will stay disabled to prevent re-submission
         }
         
         function goToStep(step) {
