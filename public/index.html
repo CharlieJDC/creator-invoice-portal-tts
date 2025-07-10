@@ -1168,7 +1168,7 @@
             });
             
             // Submit to your backend API
-            fetch('/api/submit-invoice', {
+            fetch('/.netlify/functions/submit-invoice', {
                 method: 'POST',
                 body: formDataWithFiles
             })
