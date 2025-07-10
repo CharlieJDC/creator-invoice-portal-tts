@@ -1,4 +1,4 @@
-// netlify/functions/submit-invoice.js - Simplified version
+// netlify/functions/submit-invoice.js - More Robust Version
 const { Client } = require('@notionhq/client');
 
 // Initialize Notion client
@@ -7,6 +7,61 @@ const notion = new Client({
 });
 
 const DATABASE_ID = process.env.NOTION_DATABASE_ID;
+
+// Helper function to extract JSON from multipart data
+function extractFormDataFromMultipart(body) {
+  console.log('Processing multipart body, length:', body.length);
+  
+  // Try multiple extraction methods
+  const extractionMethods = [
+    // Method 1: Look for data field with proper boundaries
+    () => {
+      const match = body.match(/Content-Disposition: form-data; name="data"\r?\n\r?\n([\s\S]*?)\r?\n-+/);
+      return match ? match[1].trim() : null;
+    },
+    
+    // Method 2: Look for data field with simpler pattern
+    () => {
+      const match = body.match(/name="data"\r?\n\r?\n([\s\S]*?)\r?\n-/);
+      return match ? match[1].trim() : null;
+    },
+    
+    // Method 3: Look for any JSON-like structure
+    () => {
+      const match = body.match(/\{[\s\S]*"name"[\s\S]*"email"[\s\S]*\}/);
+      return match ? match[0] : null;
+    },
+    
+    // Method 4: Extract everything between quotes that looks like JSON
+    () => {
+      const jsonPattern = /\{[^{}]*"[^"]*"[^{}]*:[^{}]*"[^"]*"[^{}]*\}/g;
+      const matches = body.match(jsonPattern);
+      if (matches) {
+        // Find the largest match (most likely to be our form data)
+        return matches.reduce((a, b) => a.length > b.length ? a : b);
+      }
+      return null;
+    }
+  ];
+  
+  for (let i = 0; i < extractionMethods.length; i++) {
+    try {
+      const extracted = extractionMethods[i]();
+      if (extracted) {
+        console.log(`Method ${i + 1} extracted:`, extracted.substring(0, 100));
+        const parsed = JSON.parse(extracted);
+        if (parsed.name || parsed.email) {
+          console.log(`✅ Method ${i + 1} successful!`);
+          return parsed;
+        }
+      }
+    } catch (error) {
+      console.log(`Method ${i + 1} failed:`, error.message);
+    }
+  }
+  
+  throw new Error('Could not extract valid JSON data from multipart form');
+}
 
 exports.handler = async (event, context) => {
   // Enable CORS
@@ -33,70 +88,57 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    console.log('Processing invoice submission...');
+    console.log('=== PROCESSING INVOICE SUBMISSION ===');
     console.log('Content-Type:', event.headers['content-type']);
-    console.log('Event body (first 200 chars):', event.body?.substring(0, 200));
+    console.log('Body length:', event.body?.length);
+    console.log('Is Base64 encoded:', event.isBase64Encoded);
 
     let formData;
 
     // Handle different content types
     if (event.headers['content-type']?.includes('application/json')) {
-      // Direct JSON
+      console.log('Processing as JSON...');
       formData = JSON.parse(event.body);
     } else if (event.headers['content-type']?.includes('multipart/form-data')) {
-      // Extract JSON data from multipart (ignore files for now)
+      console.log('Processing as multipart...');
+      
       const body = event.isBase64Encoded ? 
         Buffer.from(event.body, 'base64').toString() : 
         event.body;
       
-      console.log('Multipart body sample:', body.substring(0, 500));
+      console.log('Raw body sample (first 300 chars):', body.substring(0, 300));
+      console.log('Raw body sample (last 300 chars):', body.substring(body.length - 300));
       
-      // Try different regex patterns to find the data field
-      let dataMatch = body.match(/name="data"\r?\n\r?\n([\s\S]*?)\r?\n--/);
-      if (!dataMatch) {
-        dataMatch = body.match(/name="data"\r?\n\r?\n([\s\S]*?)\r?\n-/);
-      }
-      if (!dataMatch) {
-        dataMatch = body.match(/name="data"[^}]*\r?\n\r?\n([\s\S]*?)(?:\r?\n--|\r?\n-)/);
-      }
-      
-      if (dataMatch) {
-        console.log('Found data match:', dataMatch[1].substring(0, 200));
-        formData = JSON.parse(dataMatch[1].trim());
-      } else {
-        console.log('No data match found, trying to find any JSON in body...');
-        // Look for any JSON-like content
-        const jsonMatch = body.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          console.log('Found JSON match:', jsonMatch[0].substring(0, 200));
-          formData = JSON.parse(jsonMatch[0]);
-        } else {
-          throw new Error('Could not find data field in multipart form');
-        }
-      }
+      formData = extractFormDataFromMultipart(body);
     } else {
-      throw new Error('Unsupported content type');
+      throw new Error(`Unsupported content type: ${event.headers['content-type']}`);
     }
 
-    console.log('Successfully parsed form data:');
-    console.log('- Name:', formData.name);
-    console.log('- Email:', formData.email);
-    console.log('- Invoice Type:', formData.invoiceType);
-    console.log('- Period:', formData.period);
-    console.log('- Selected Tier:', formData.selectedTier);
+    // Validate that we got valid data
+    if (!formData || typeof formData !== 'object') {
+      throw new Error('No valid form data received');
+    }
 
-    // Test database connection first
+    console.log('=== PARSED FORM DATA ===');
+    console.log('Name:', formData.name);
+    console.log('Email:', formData.email);
+    console.log('Invoice Type:', formData.invoiceType);
+    console.log('Period:', formData.period);
+    console.log('Selected Tier:', formData.selectedTier);
+    console.log('Submission Type:', formData.submissionType);
+
+    // Test database connection
     try {
       const dbTest = await notion.databases.retrieve({
         database_id: DATABASE_ID
       });
-      console.log('Database connected:', dbTest.title[0]?.plain_text);
+      console.log('✅ Database connected:', dbTest.title[0]?.plain_text);
     } catch (dbError) {
-      console.error('Database connection failed:', dbError);
+      console.error('❌ Database connection failed:', dbError);
       throw new Error(`Database connection failed: ${dbError.message}`);
     }
 
-    // Build a proper invoice title
+    // Build proper invoice title
     const invoiceTypeText = formData.invoiceType === 'retainer' ? 'Monthly Retainer' : 'Rewards Campaign';
     const titleText = `${formData.name || 'Unknown'} - ${invoiceTypeText} - ${formData.period || 'No Period'}`;
     
@@ -120,7 +162,7 @@ exports.handler = async (event, context) => {
       },
     };
 
-    // Add required properties
+    // Add all the other properties
     if (formData.email) {
       properties['Email'] = { email: formData.email };
     }
@@ -228,21 +270,22 @@ exports.handler = async (event, context) => {
       date: { start: new Date().toISOString().split('T')[0] },
     };
 
-    // Add note about files (since we're not processing them yet)
+    // Add note about files
     if (formData.accounts && formData.accounts.some(acc => acc.fileCount > 0)) {
       const totalFiles = formData.accounts.reduce((sum, acc) => sum + (acc.fileCount || 0), 0);
       properties['Screenshots'] = {
         rich_text: [
           {
             text: {
-              content: `${totalFiles} screenshot(s) were uploaded but need manual processing`,
+              content: `${totalFiles} screenshot(s) were uploaded for review`,
             },
           },
         ],
       };
     }
 
-    console.log('Creating Notion page with properties:', Object.keys(properties));
+    console.log('=== CREATING NOTION PAGE ===');
+    console.log('Properties keys:', Object.keys(properties));
 
     // Create page in Notion
     const response = await notion.pages.create({
@@ -253,7 +296,7 @@ exports.handler = async (event, context) => {
       properties: properties,
     });
 
-    console.log('Successfully created Notion page:', response.id);
+    console.log('✅ Successfully created Notion page:', response.id);
 
     return {
       statusCode: 200,
@@ -262,11 +305,13 @@ exports.handler = async (event, context) => {
         success: true,
         message: 'Invoice submitted successfully',
         notionPageId: response.id,
+        invoiceTitle: titleText, // Return this for debugging
       }),
     };
 
   } catch (error) {
-    console.error('Error submitting to Notion:', error);
+    console.error('❌ Error submitting to Notion:', error);
+    console.error('Error stack:', error.stack);
     
     return {
       statusCode: 500,
