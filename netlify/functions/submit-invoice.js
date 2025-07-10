@@ -1,4 +1,4 @@
-// netlify/functions/submit-invoice.js
+// netlify/functions/submit-invoice.js - Simplified version
 const { Client } = require('@notionhq/client');
 
 // Initialize Notion client
@@ -35,48 +35,72 @@ exports.handler = async (event, context) => {
   try {
     console.log('Processing invoice submission...');
     console.log('Content-Type:', event.headers['content-type']);
+    console.log('Event body (first 200 chars):', event.body?.substring(0, 200));
 
     let formData;
-    let files = [];
 
-    console.log('Event body type:', typeof event.body);
-    console.log('Event isBase64Encoded:', event.isBase64Encoded);
-
-    // Try to parse the body
-    try {
-      if (event.headers['content-type']?.includes('multipart/form-data')) {
-        // For now, let's just extract the JSON data part and skip files
-        // This is a simplified approach - you may need a proper multipart parser
-        const body = event.isBase64Encoded ? 
-          Buffer.from(event.body, 'base64').toString() : 
-          event.body;
-        
-        // Look for the JSON data in the multipart body
-        const dataMatch = body.match(/name="data"\r?\n\r?\n(.*?)\r?\n/);
-        if (dataMatch) {
-          formData = JSON.parse(dataMatch[1]);
-        } else {
-          throw new Error('Could not find form data in multipart body');
-        }
-      } else {
-        // Regular JSON body
-        formData = JSON.parse(event.body);
+    // Handle different content types
+    if (event.headers['content-type']?.includes('application/json')) {
+      // Direct JSON
+      formData = JSON.parse(event.body);
+    } else if (event.headers['content-type']?.includes('multipart/form-data')) {
+      // Extract JSON data from multipart (ignore files for now)
+      const body = event.isBase64Encoded ? 
+        Buffer.from(event.body, 'base64').toString() : 
+        event.body;
+      
+      console.log('Multipart body sample:', body.substring(0, 500));
+      
+      // Try different regex patterns to find the data field
+      let dataMatch = body.match(/name="data"\r?\n\r?\n([\s\S]*?)\r?\n--/);
+      if (!dataMatch) {
+        dataMatch = body.match(/name="data"\r?\n\r?\n([\s\S]*?)\r?\n-/);
       }
-    } catch (parseError) {
-      console.error('Error parsing request body:', parseError);
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({
-          success: false,
-          error: 'Invalid request format',
-          details: parseError.message,
-        }),
-      };
+      if (!dataMatch) {
+        dataMatch = body.match(/name="data"[^}]*\r?\n\r?\n([\s\S]*?)(?:\r?\n--|\r?\n-)/);
+      }
+      
+      if (dataMatch) {
+        console.log('Found data match:', dataMatch[1].substring(0, 200));
+        formData = JSON.parse(dataMatch[1].trim());
+      } else {
+        console.log('No data match found, trying to find any JSON in body...');
+        // Look for any JSON-like content
+        const jsonMatch = body.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          console.log('Found JSON match:', jsonMatch[0].substring(0, 200));
+          formData = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('Could not find data field in multipart form');
+        }
+      }
+    } else {
+      throw new Error('Unsupported content type');
     }
 
-    console.log('Parsed form data:', JSON.stringify(formData, null, 2));
-    console.log('Number of files:', files.length);
+    console.log('Successfully parsed form data:');
+    console.log('- Name:', formData.name);
+    console.log('- Email:', formData.email);
+    console.log('- Invoice Type:', formData.invoiceType);
+    console.log('- Period:', formData.period);
+    console.log('- Selected Tier:', formData.selectedTier);
+
+    // Test database connection first
+    try {
+      const dbTest = await notion.databases.retrieve({
+        database_id: DATABASE_ID
+      });
+      console.log('Database connected:', dbTest.title[0]?.plain_text);
+    } catch (dbError) {
+      console.error('Database connection failed:', dbError);
+      throw new Error(`Database connection failed: ${dbError.message}`);
+    }
+
+    // Build a proper invoice title
+    const invoiceTypeText = formData.invoiceType === 'retainer' ? 'Monthly Retainer' : 'Rewards Campaign';
+    const titleText = `${formData.name || 'Unknown'} - ${invoiceTypeText} - ${formData.period || 'No Period'}`;
+    
+    console.log('Generated title:', titleText);
 
     // Build properties object for Notion
     const properties = {
@@ -84,7 +108,7 @@ exports.handler = async (event, context) => {
         title: [
           {
             text: {
-              content: `${formData.name || 'New'} - ${formData.invoiceType || 'Invoice'} - ${formData.period || new Date().toISOString().split('T')[0]}`,
+              content: titleText,
             },
           },
         ],
@@ -96,41 +120,25 @@ exports.handler = async (event, context) => {
       },
     };
 
-    // Add optional properties
+    // Add required properties
     if (formData.email) {
-      properties['Email'] = {
-        email: formData.email,
-      };
+      properties['Email'] = { email: formData.email };
     }
 
     if (formData.name) {
       properties['Name 1'] = {
-        rich_text: [
-          {
-            text: {
-              content: formData.name,
-            },
-          },
-        ],
+        rich_text: [{ text: { content: formData.name } }],
       };
     }
 
     if (formData.discord) {
       properties['Discord Username'] = {
-        rich_text: [
-          {
-            text: {
-              content: formData.discord,
-            },
-          },
-        ],
+        rich_text: [{ text: { content: formData.discord } }],
       };
     }
 
     if (formData.phone) {
-      properties['Phone'] = {
-        phone_number: formData.phone,
-      };
+      properties['Phone'] = { phone_number: formData.phone };
     }
 
     if (formData.submissionType) {
@@ -142,9 +150,7 @@ exports.handler = async (event, context) => {
     }
 
     properties['Brand 1'] = {
-      select: {
-        name: 'Dr Dent',
-      },
+      select: { name: 'Dr Dent' },
     };
 
     if (formData.invoiceType) {
@@ -157,23 +163,19 @@ exports.handler = async (event, context) => {
 
     if (formData.period) {
       properties['Period'] = {
-        select: {
-          name: formData.period,
-        },
+        select: { name: formData.period },
       };
     }
 
     if (formData.selectedTier) {
       const tierMap = {
         'tier1': 'Tier 1',
-        'tier2': 'Tier 2',
+        'tier2': 'Tier 2', 
         'tier3': 'Tier 3',
         'tier4': 'Tier 4'
       };
       properties['Selected Tier'] = {
-        select: {
-          name: tierMap[formData.selectedTier],
-        },
+        select: { name: tierMap[formData.selectedTier] },
       };
     }
 
@@ -191,13 +193,7 @@ exports.handler = async (event, context) => {
 
     if (formData.address) {
       properties['Address'] = {
-        rich_text: [
-          {
-            text: {
-              content: formData.address,
-            },
-          },
-        ],
+        rich_text: [{ text: { content: formData.address } }],
       };
     }
 
@@ -213,7 +209,7 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Add VAT information if business submission
+    // Add VAT information
     if (formData.submissionType === 'business' && formData.vatRegistered) {
       properties['VAT Status'] = {
         select: {
@@ -223,39 +219,30 @@ exports.handler = async (event, context) => {
       
       if (formData.vatNumber) {
         properties['VAT Number'] = {
-          rich_text: [
-            {
-              text: {
-                content: formData.vatNumber,
-              },
-            },
-          ],
+          rich_text: [{ text: { content: formData.vatNumber } }],
         };
       }
     }
 
     properties['Due Date'] = {
-      date: {
-        start: new Date().toISOString().split('T')[0],
-      },
+      date: { start: new Date().toISOString().split('T')[0] },
     };
 
-    // Handle file uploads - store as text since we can't upload to Notion directly
-    if (files.length > 0) {
-      const fileInfo = files.map((file, index) => 
-        `File ${index + 1}: ${file.filename} (${Math.round(file.content.length / 1024)}KB)`
-      ).join('\n');
-      
+    // Add note about files (since we're not processing them yet)
+    if (formData.accounts && formData.accounts.some(acc => acc.fileCount > 0)) {
+      const totalFiles = formData.accounts.reduce((sum, acc) => sum + (acc.fileCount || 0), 0);
       properties['Screenshots'] = {
         rich_text: [
           {
             text: {
-              content: `${files.length} screenshot(s) uploaded:\n${fileInfo}`,
+              content: `${totalFiles} screenshot(s) were uploaded but need manual processing`,
             },
           },
         ],
       };
     }
+
+    console.log('Creating Notion page with properties:', Object.keys(properties));
 
     // Create page in Notion
     const response = await notion.pages.create({
@@ -266,7 +253,7 @@ exports.handler = async (event, context) => {
       properties: properties,
     });
 
-    console.log('Created Notion page:', response.id);
+    console.log('Successfully created Notion page:', response.id);
 
     return {
       statusCode: 200,
