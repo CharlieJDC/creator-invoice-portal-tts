@@ -1169,19 +1169,14 @@
             
             console.log('Submitting form data:', formData.name, formData.email, formData.period);
             
-            // Create FormData for file uploads
-            const formDataWithFiles = new FormData();
-            formDataWithFiles.append('data', JSON.stringify(formData));
-            
-            // Add all files to FormData
-            formData.screenshots.forEach((screenshot, index) => {
-                formDataWithFiles.append(`screenshot_${index}`, screenshot.fileData);
-            });
-            
-            // Submit to your backend API
-            fetch('/.netlify/functions/submit-invoice', {
-                method: 'POST',
-                body: formDataWithFiles
+           // Submit as JSON (no files for now)
+fetch('/.netlify/functions/submit-invoice', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(formData)
+})
             })
             .then(response => {
                 console.log('Response status:', response.status);
