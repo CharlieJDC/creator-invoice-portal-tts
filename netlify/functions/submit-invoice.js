@@ -365,15 +365,13 @@ exports.handler = async (event, context) => {
 
     // Add screenshots
     if (screenshotInfo.length > 0) {
-      properties['Screenshots'] = { url: screenshotInfo[0].cloudinaryUrl };
+      const screenshotText = screenshotInfo.map((screenshot, index) => 
+        `📷 Screenshot ${index + 1}: ${screenshot.originalName}\n🔗 URL: ${screenshot.cloudinaryUrl}\n`
+      ).join('\n');
       
-      if (screenshotInfo.length > 1) {
-        const screenshotLinks = screenshotInfo.map((screenshot, index) => 
-          `📷 Screenshot ${index + 1}: ${screenshot.cloudinaryUrl}`
-        ).join('\n');
-        
-        properties['Screenshot Links'] = { rich_text: [{ text: { content: screenshotLinks } }] };
-      }
+      properties['Screenshots'] = {
+        rich_text: [{ text: { content: screenshotText } }]
+      };
     }
 
     const response = await notion.pages.create({
