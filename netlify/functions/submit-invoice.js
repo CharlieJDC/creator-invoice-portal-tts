@@ -409,7 +409,7 @@ exports.handler = async (event, context) => {
       }
     }
 
-    properties['Submitted On'] = {
+    properties['Submitted on'] = {
       date: { start: new Date().toISOString().split('T')[0] }
     };
 
