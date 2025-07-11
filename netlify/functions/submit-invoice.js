@@ -365,12 +365,8 @@ exports.handler = async (event, context) => {
 
     // Add screenshots
     if (screenshotInfo.length > 0) {
-      const screenshotText = screenshotInfo.map((screenshot, index) => 
-        `📷 Screenshot ${index + 1}: ${screenshot.originalName}\n🔗 URL: ${screenshot.cloudinaryUrl}\n`
-      ).join('\n');
-      
       properties['Screenshots'] = {
-        rich_text: [{ text: { content: screenshotText } }]
+        url: screenshotInfo[0].cloudinaryUrl
       };
     }
 
