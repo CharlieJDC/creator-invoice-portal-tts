@@ -926,7 +926,82 @@
         let accountCount = 1;
         let uploadedFiles = {};
         
+        // Debug log
+        console.log('JavaScript loaded successfully');
+        
+        function selectType(type) {
+            console.log('selectType called with:', type);
+            submissionType = type;
+            
+            // Update form labels and fields based on selection
+            if (type === 'individual') {
+                document.getElementById('formTitle').innerHTML = '👤 Individual Creator Details';
+                document.getElementById('nameLabel').textContent = 'Full Name *';
+                document.getElementById('nameInput').placeholder = 'Your full legal name';
+                document.getElementById('contactGroup').style.display = 'none';
+                document.getElementById('vatGroup').style.display = 'none';
+                document.getElementById('vatNumberGroup').style.display = 'none';
+            } else {
+                document.getElementById('formTitle').innerHTML = '🏢 Business Entity Details';
+                document.getElementById('nameLabel').textContent = 'Business Name *';
+                document.getElementById('nameInput').placeholder = 'Registered business name';
+                document.getElementById('contactGroup').style.display = 'block';
+                document.getElementById('vatGroup').style.display = 'block';
+            }
+            
+            goToStep(1);
+        }
+
+        function selectVatStatus(status) {
+            console.log('selectVatStatus called with:', status);
+            // Update VAT status selection UI
+            const options = document.querySelectorAll('#vatGroup .method-option');
+            options.forEach(option => option.classList.remove('selected'));
+            event.target.closest('.method-option').classList.add('selected');
+            
+            // Update radio buttons
+            const radios = document.querySelectorAll('input[name="vatStatus"]');
+            radios.forEach(radio => radio.checked = false);
+            event.target.closest('.method-option').querySelector('input').checked = true;
+            
+            // Show/hide VAT number field
+            const vatNumberGroup = document.getElementById('vatNumberGroup');
+            if (status === 'yes') {
+                vatNumberGroup.style.display = 'block';
+            } else {
+                vatNumberGroup.style.display = 'none';
+            }
+        }
+        
+        function selectMethod(method) {
+            console.log('selectMethod called with:', method);
+            invoiceMethod = method;
+            
+            // Update method selection UI
+            const options = document.querySelectorAll('.method-option');
+            options.forEach(option => option.classList.remove('selected'));
+            event.target.closest('.method-option').classList.add('selected');
+            
+            // Update radio buttons
+            const radios = document.querySelectorAll('input[name="method"]');
+            radios.forEach(radio => radio.checked = false);
+            event.target.closest('.method-option').querySelector('input').checked = true;
+            
+            // Show/hide address and bank fields based on method
+            const addressGroup = document.getElementById('addressGroup');
+            const bankGroups = ['bankGroup1', 'bankGroup2', 'bankGroup3', 'bankGroup4'];
+            
+            if (method === 'upload') {
+                addressGroup.style.display = 'none';
+                bankGroups.forEach(id => document.getElementById(id).style.display = 'none');
+            } else {
+                addressGroup.style.display = 'block';
+                bankGroups.forEach(id => document.getElementById(id).style.display = 'block');
+            }
+        }
+        
         function handleFileUpload(accountNumber) {
+            console.log('handleFileUpload called for account:', accountNumber);
             const fileInput = document.getElementById(`screenshots${accountNumber}`);
             const files = fileInput.files;
             
@@ -963,6 +1038,7 @@
         }
         
         function addAccount() {
+            console.log('addAccount called');
             accountCount++;
             const container = document.getElementById('accountsContainer');
             
@@ -1000,6 +1076,7 @@
         }
         
         function removeAccount(accountNumber) {
+            console.log('removeAccount called for:', accountNumber);
             const accountSection = document.getElementById(`account${accountNumber}`);
             if (accountSection && accountCount > 1) {
                 accountSection.remove();
@@ -1007,75 +1084,8 @@
             }
         }
         
-        function selectType(type) {
-            submissionType = type;
-            
-            // Update form labels and fields based on selection
-            if (type === 'individual') {
-                document.getElementById('formTitle').innerHTML = '👤 Individual Creator Details';
-                document.getElementById('nameLabel').textContent = 'Full Name *';
-                document.getElementById('nameInput').placeholder = 'Your full legal name';
-                document.getElementById('contactGroup').style.display = 'none';
-                document.getElementById('vatGroup').style.display = 'none';
-                document.getElementById('vatNumberGroup').style.display = 'none';
-            } else {
-                document.getElementById('formTitle').innerHTML = '🏢 Business Entity Details';
-                document.getElementById('nameLabel').textContent = 'Business Name *';
-                document.getElementById('nameInput').placeholder = 'Registered business name';
-                document.getElementById('contactGroup').style.display = 'block';
-                document.getElementById('vatGroup').style.display = 'block';
-            }
-            
-            goToStep(1);
-        }
-
-        function selectVatStatus(status) {
-            // Update VAT status selection UI
-            const options = document.querySelectorAll('#vatGroup .method-option');
-            options.forEach(option => option.classList.remove('selected'));
-            event.target.closest('.method-option').classList.add('selected');
-            
-            // Update radio buttons
-            const radios = document.querySelectorAll('input[name="vatStatus"]');
-            radios.forEach(radio => radio.checked = false);
-            event.target.closest('.method-option').querySelector('input').checked = true;
-            
-            // Show/hide VAT number field
-            const vatNumberGroup = document.getElementById('vatNumberGroup');
-            if (status === 'yes') {
-                vatNumberGroup.style.display = 'block';
-            } else {
-                vatNumberGroup.style.display = 'none';
-            }
-        }
-        
-        function selectMethod(method) {
-            invoiceMethod = method;
-            
-            // Update method selection UI
-            const options = document.querySelectorAll('.method-option');
-            options.forEach(option => option.classList.remove('selected'));
-            event.target.closest('.method-option').classList.add('selected');
-            
-            // Update radio buttons
-            const radios = document.querySelectorAll('input[name="method"]');
-            radios.forEach(radio => radio.checked = false);
-            event.target.closest('.method-option').querySelector('input').checked = true;
-            
-            // Show/hide address and bank fields based on method
-            const addressGroup = document.getElementById('addressGroup');
-            const bankGroups = ['bankGroup1', 'bankGroup2', 'bankGroup3', 'bankGroup4'];
-            
-            if (method === 'upload') {
-                addressGroup.style.display = 'none';
-                bankGroups.forEach(id => document.getElementById(id).style.display = 'none');
-            } else {
-                addressGroup.style.display = 'block';
-                bankGroups.forEach(id => document.getElementById(id).style.display = 'block');
-            }
-        }
-        
         function updateInvoiceType() {
+            console.log('updateInvoiceType called');
             const select = document.getElementById('invoiceTypeSelect');
             const periodLabel = document.getElementById('periodLabel');
             const periodInput = document.getElementById('periodInput');
@@ -1093,28 +1103,16 @@
         }
         
         function submitInvoice() {
-            // Prevent double submission
-            const submitBtn = event.target;
-            if (submitBtn.disabled) {
-                console.log('Submit already in progress, ignoring click');
-                return;
-            }
+            console.log('submitInvoice called');
             
-            // Immediately disable button
-            submitBtn.disabled = true;
-            const originalText = submitBtn.textContent;
-            submitBtn.textContent = 'Submitting to Notion...';
-            
-            // Collect all form data
+            // Check if tier is selected for retainer type
             const selectedTier = document.querySelector('input[name="tier"]:checked');
             if (!selectedTier && document.getElementById('invoiceTypeSelect').value === 'retainer') {
                 alert('Please select a retainer tier before submitting.');
-                // Re-enable button on validation error
-                submitBtn.disabled = false;
-                submitBtn.textContent = originalText;
                 return;
             }
             
+            // Collect all form data
             const formData = {
                 submissionType: submissionType,
                 invoiceMethod: invoiceMethod,
@@ -1160,33 +1158,43 @@
                                 fileName: file.name,
                                 fileSize: file.size,
                                 fileType: file.type,
-                                fileData: file // This will be processed by the backend
+                                fileData: file
                             });
                         });
                     }
                 }
             }
             
-            console.log('Submitting form data:', formData.name, formData.email, formData.period);
+            console.log('Form data collected:', formData);
             
-           // Submit as JSON (no files for now)
-fetch('/.netlify/functions/submit-invoice', {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(formData)
-})
+            // Show loading state
+            const submitBtn = event.target;
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Submitting to Notion...';
+            submitBtn.disabled = true;
+            
+            // Create FormData for file uploads
+            const formDataWithFiles = new FormData();
+            formDataWithFiles.append('data', JSON.stringify(formData));
+            
+            // Add all files to FormData
+            formData.screenshots.forEach((screenshot, index) => {
+                formDataWithFiles.append(`screenshot_${index}`, screenshot.fileData);
+            });
+            
+            console.log('Submitting to Netlify function...');
+            
+            // Submit to Netlify function
+            fetch('/.netlify/functions/submit-invoice', {
+                method: 'POST',
+                body: formDataWithFiles
             })
             .then(response => {
                 console.log('Response status:', response.status);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
                 return response.json();
             })
             .then(result => {
-                console.log('Success response:', result);
+                console.log('Submission result:', result);
                 if (result.success) {
                     // Update success email
                     const email = document.getElementById('emailInput').value || 'john@example.com';
@@ -1194,24 +1202,23 @@ fetch('/.netlify/functions/submit-invoice', {
                     goToStep(5);
                 } else {
                     alert('Error submitting invoice: ' + result.error);
-                    // Re-enable button on error
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = originalText;
+                    console.error('Submission error:', result);
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                alert('Error submitting invoice: ' + error.message);
-                // Re-enable button on error
-                submitBtn.disabled = false;
+                console.error('Network error:', error);
+                alert('Error submitting invoice. Please check the console for details.');
+            })
+            .finally(() => {
+                // Reset button
                 submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
             });
-            
-            // Note: Button is intentionally NOT re-enabled on success
-            // It will stay disabled to prevent re-submission
         }
         
         function goToStep(step) {
+            console.log('goToStep called with:', step);
+            
             // Hide all steps
             for (let i = 0; i <= 5; i++) {
                 const stepElement = document.getElementById('step' + i);
@@ -1220,7 +1227,11 @@ fetch('/.netlify/functions/submit-invoice', {
             
             // Show current step
             const currentStepElement = document.getElementById('step' + step);
-            if (currentStepElement) currentStepElement.classList.remove('hidden');
+            if (currentStepElement) {
+                currentStepElement.classList.remove('hidden');
+            } else {
+                console.error('Could not find step element:', 'step' + step);
+            }
             
             currentStep = step;
             
@@ -1286,8 +1297,22 @@ fetch('/.netlify/functions/submit-invoice', {
             }
         }
         
-        // Initialize
-        goToStep(0);
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, initializing app');
+            goToStep(0);
+        });
+        
+        // Fallback initialization
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('DOM loaded (fallback), initializing app');
+                goToStep(0);
+            });
+        } else {
+            console.log('DOM already loaded, initializing app immediately');
+            goToStep(0);
+        }
     </script>
 </body>
 </html>
