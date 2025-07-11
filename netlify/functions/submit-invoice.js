@@ -11,9 +11,6 @@ const notion = new Client({
 
 const DATABASE_ID = process.env.NOTION_DATABASE_ID;
 
-// Initialize Cloudinary (uses CLOUDINARY_URL environment variable automatically)
-// No additional configuration needed if CLOUDINARY_URL is set
-
 // Brand configurations
 const BRAND_CONFIGS = {
   'dr-dent': {
@@ -46,21 +43,17 @@ function getBrandConfig(brandKey) {
 async function uploadToCloudinary(buffer, filename, resourceType = 'auto') {
   try {
     return new Promise((resolve, reject) => {
-      // For PDFs, use specific settings to ensure proper upload
       const uploadOptions = {
         resource_type: resourceType,
-        public_id: `tmmb-invoices/${Date.now()}-${filename.replace(/\.[^/.]+$/, "")}`, // Add timestamp to avoid conflicts
-        use_filename: false, // Don't use original filename to avoid issues
-        unique_filename: false, // Don't add random chars
+        public_id: `tmmb-invoices/${Date.now()}-${filename.replace(/\.[^/.]+$/, "")}`,
+        use_filename: false,
+        unique_filename: false,
         folder: 'tmmb-invoices'
       };
 
-      // For raw files (PDFs), don't specify format - let Cloudinary handle it
       if (resourceType === 'raw') {
-        uploadOptions.flags = 'attachment'; // Force download instead of preview
+        uploadOptions.flags = 'attachment';
       }
-
-      console.log('Cloudinary upload options:', uploadOptions);
 
       const uploadStream = cloudinary.uploader.upload_stream(
         uploadOptions,
@@ -69,13 +62,7 @@ async function uploadToCloudinary(buffer, filename, resourceType = 'auto') {
             console.error('Cloudinary upload error:', error);
             reject(error);
           } else {
-            console.log('Cloudinary upload result:', {
-              url: result.secure_url,
-              public_id: result.public_id,
-              resource_type: result.resource_type,
-              format: result.format
-            });
-            
+            console.log('Cloudinary upload success:', result.secure_url);
             resolve({
               publicId: result.public_id,
               url: result.secure_url,
@@ -124,47 +111,46 @@ async function generateInvoicePDF(formData) {
       // Invoice title - large, centered, spaced
       doc.fontSize(36)
          .font('Helvetica')
-         .text('INVOICE', 60, 140, { align: 'center', characterSpacing: 8 });
+         .text('INVOICE', 60, 120, { align: 'center', characterSpacing: 8 });
       
-      // Billed To section (left side) - Brand details (who is being billed)
+      // Billed To section (left side) - Brand details
       doc.fontSize(12)
          .font('Helvetica-Bold')
-         .text('BILLED TO:', 60, 220);
+         .text('BILLED TO:', 60, 200);
       
       doc.fontSize(11)
          .font('Helvetica')
-         .text(brandConfig.billingDetails.companyName, 60, 240);
+         .text(brandConfig.billingDetails.companyName, 60, 220);
       
-      // Brand address
       const brandAddressLines = brandConfig.billingDetails.address.split('\n');
-      let yPosition = 255;
+      let yPosition = 235;
       brandAddressLines.forEach(line => {
         doc.text(line.trim(), 60, yPosition);
         yPosition += 15;
       });
       
-      // From section (right side) - Creator/Business details (who is billing)
+      // From section (right side) - Creator details
       doc.fontSize(12)
          .font('Helvetica-Bold')
-         .text('FROM:', 400, 220);
+         .text('FROM:', 400, 200);
       
       doc.fontSize(11)
          .font('Helvetica')
-         .text(formData.name, 400, 240);
+         .text(formData.name, 400, 220);
       
       if (formData.address) {
         const creatorAddressLines = formData.address.split('\n');
-        let creatorYPosition = 255;
+        let creatorYPosition = 235;
         creatorAddressLines.forEach(line => {
           doc.text(line.trim(), 400, creatorYPosition);
           creatorYPosition += 15;
         });
       }
       
-      // Date section (below FROM)
+      // Date section
       doc.fontSize(12)
          .font('Helvetica-Bold')
-         .text('DATE:', 400, creatorYPosition + 20);
+         .text('DATE:', 400, 300);
       
       doc.fontSize(11)
          .font('Helvetica')
@@ -172,12 +158,11 @@ async function generateInvoicePDF(formData) {
            day: 'numeric', 
            month: 'long', 
            year: 'numeric' 
-         }), 400, creatorYPosition + 40);
+         }), 400, 320);
       
-      // Task section with lines
-      const taskY = 340;
+      // Task section
+      const taskY = 380;
       
-      // Draw line above task section
       doc.moveTo(60, taskY - 10)
          .lineTo(535, taskY - 10)
          .stroke();
@@ -204,18 +189,16 @@ async function generateInvoicePDF(formData) {
         currentY += 20;
       }
       
-      // Draw line above total
       doc.moveTo(60, currentY + 10)
          .lineTo(535, currentY + 10)
          .stroke();
       
-      // Total section
       doc.fontSize(14)
          .font('Helvetica-Bold')
          .text('TOTAL DUE', 350, currentY + 25)
          .text(`£${totalAmount}`, 450, currentY + 25);
       
-      // Payment information section
+      // Payment information
       const paymentY = currentY + 80;
       doc.fontSize(12)
          .font('Helvetica-Bold')
@@ -223,16 +206,10 @@ async function generateInvoicePDF(formData) {
       
       doc.fontSize(11)
          .font('Helvetica')
-         .text(`Account Name:`, 60, paymentY + 25)
-         .text(`${formData.accountName || formData.name}`, 200, paymentY + 25);
+         .text(`Account Name: ${formData.accountName || formData.name}`, 60, paymentY + 25)
+         .text(`Account Number: ${formData.accountNumber || ''}`, 60, paymentY + 45)
+         .text(`Sort Code: ${formData.sortCode || ''}`, 60, paymentY + 65);
       
-      doc.text(`Account Number:`, 60, paymentY + 45)
-         .text(`${formData.accountNumber || ''}`, 200, paymentY + 45);
-      
-      doc.text(`Sort Code:`, 60, paymentY + 65)
-         .text(`${formData.sortCode || ''}`, 200, paymentY + 65);
-      
-      // VAT information
       if (isVatRegistered && formData.vatNumber) {
         doc.fontSize(10)
            .font('Helvetica-Oblique')
@@ -243,7 +220,6 @@ async function generateInvoicePDF(formData) {
            .text('*Not VAT registered, VAT not applicable', 60, paymentY + 100);
       }
       
-      // Footer with black bar (like your template)
       doc.rect(60, 750, 475, 20)
          .fill('black');
       
@@ -264,12 +240,8 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    console.log('Processing form submission...');
-    
-    // Parse multipart form data
     const result = await multipart.parse(event);
     
-    // Extract form data
     let formData;
     if (result.data) {
       formData = JSON.parse(result.data);
@@ -279,116 +251,71 @@ exports.handler = async (event, context) => {
       formData = JSON.parse(event.body);
     }
 
-    console.log('Form data parsed successfully');
-
-    // Build invoice title
     const submitterName = formData.name || 'New Submission';
     const invoicePeriod = formData.period || new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
     const invoiceTypeText = formData.invoiceType === 'retainer' ? 'Monthly Retainer' : 'Rewards Campaign';
     const invoiceTitle = `${submitterName} - ${invoiceTypeText} - ${invoicePeriod}`;
 
-    // Generate and upload PDF invoice if requested
+    // Generate and upload PDF
     let invoiceInfo = null;
     if (formData.invoiceMethod === 'generate' && formData.invoiceType === 'retainer' && formData.selectedTier) {
-      console.log('Generating PDF invoice...');
-      console.log('Form data for PDF:', {
-        name: formData.name,
-        selectedTier: formData.selectedTier,
-        invoiceType: formData.invoiceType,
-        period: formData.period
-      });
-      
       try {
         const pdfResult = await generateInvoicePDF(formData);
-        console.log('PDF generated successfully, size:', pdfResult.buffer.length);
-        console.log('PDF filename:', pdfResult.filename);
-        
-        const cloudinaryResult = await uploadToCloudinary(
-          pdfResult.buffer,
-          pdfResult.filename,
-          'raw' // Use 'raw' for PDFs to preserve the file exactly
-        );
+        const cloudinaryResult = await uploadToCloudinary(pdfResult.buffer, pdfResult.filename, 'raw');
         
         invoiceInfo = {
           ...pdfResult,
           cloudinaryUrl: cloudinaryResult.url,
           publicId: cloudinaryResult.publicId
         };
-        
-        console.log('Invoice uploaded to Cloudinary successfully:', invoiceInfo.cloudinaryUrl);
       } catch (pdfError) {
-        console.error('PDF generation/upload failed:', pdfError);
-        console.error('PDF error stack:', pdfError.stack);
-        // Continue without PDF but log the error
+        console.error('PDF generation failed:', pdfError);
       }
-    } else {
-      console.log('PDF generation skipped. Conditions:', {
-        invoiceMethod: formData.invoiceMethod,
-        invoiceType: formData.invoiceType,
-        selectedTier: formData.selectedTier
-      });
     }
 
-    // Upload screenshots to Cloudinary
+    // Upload screenshots
     const files = result.files || [];
     const screenshotInfo = [];
     
     if (files.length > 0) {
-      console.log(`Uploading ${files.length} screenshots to Cloudinary...`);
-      
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         try {
           const timestamp = Date.now();
           const screenshotFilename = `screenshot-${timestamp}-${i}-${file.filename}`;
           
-          const cloudinaryResult = await uploadToCloudinary(
-            file.content,
-            screenshotFilename,
-            'image'
-          );
+          const cloudinaryResult = await uploadToCloudinary(file.content, screenshotFilename, 'image');
           
           screenshotInfo.push({
             originalName: file.filename,
             cloudinaryUrl: cloudinaryResult.url,
             publicId: cloudinaryResult.publicId
           });
-          
-          console.log(`Screenshot ${i + 1} uploaded:`, cloudinaryResult.url);
         } catch (uploadError) {
           console.error(`Failed to upload screenshot ${i + 1}:`, uploadError);
         }
       }
     }
 
-    // Build Notion properties
+    // Build properties
     const properties = {
-      'Invoice Title': {
-        title: [{ text: { content: invoiceTitle } }]
-      },
-      'Status': {
-        status: { name: 'Pending' }
-      }
+      'Invoice Title': { title: [{ text: { content: invoiceTitle } }] },
+      'Status': { status: { name: 'Pending' } }
     };
 
-    // Add all form fields
     if (formData.email) properties['Email'] = { email: formData.email };
     if (formData.name) properties['Name 1'] = { rich_text: [{ text: { content: formData.name } }] };
     if (formData.discord) properties['Discord Username'] = { rich_text: [{ text: { content: formData.discord } }] };
     if (formData.phone) properties['Phone'] = { phone_number: formData.phone };
     
     if (formData.submissionType) {
-      properties['Submission Type'] = {
-        select: { name: formData.submissionType === 'individual' ? 'Individual' : 'Business' }
-      };
+      properties['Submission Type'] = { select: { name: formData.submissionType === 'individual' ? 'Individual' : 'Business' } };
     }
 
     properties['Brand 1'] = { select: { name: 'Dr Dent' } };
 
     if (formData.invoiceType) {
-      properties['Invoice Type'] = {
-        select: { name: formData.invoiceType === 'retainer' ? 'Monthly Retainer' : 'Rewards' }
-      };
+      properties['Invoice Type'] = { select: { name: formData.invoiceType === 'retainer' ? 'Monthly Retainer' : 'Rewards' } };
     }
 
     if (formData.period) properties['Period'] = { select: { name: formData.period } };
@@ -399,16 +326,13 @@ exports.handler = async (event, context) => {
     }
 
     if (formData.accounts && formData.accounts.length > 0) {
-      properties['TikTok Handle'] = {
-        rich_text: [{ text: { content: formData.accounts.map(acc => acc.handle).join(', ') } }]
-      };
+      properties['TikTok Handle'] = { rich_text: [{ text: { content: formData.accounts.map(acc => acc.handle).join(', ') } }] };
     }
 
     if (formData.address) {
       properties['Address'] = { rich_text: [{ text: { content: formData.address } }] };
     }
 
-    // Bank details
     if (formData.bankName || formData.accountName || formData.accountNumber || formData.sortCode) {
       const bankDetails = [];
       if (formData.bankName) bankDetails.push(`Bank: ${formData.bankName}`);
@@ -416,72 +340,46 @@ exports.handler = async (event, context) => {
       if (formData.accountNumber) bankDetails.push(`Number: ${formData.accountNumber}`);
       if (formData.sortCode) bankDetails.push(`Sort: ${formData.sortCode}`);
       
-      properties['Bank Details'] = {
-        rich_text: [{ text: { content: bankDetails.join(', ') } }]
-      };
+      properties['Bank Details'] = { rich_text: [{ text: { content: bankDetails.join(', ') } }] };
     }
 
-    // VAT information
     if (formData.submissionType === 'business' && formData.vatRegistered) {
-      properties['VAT Status'] = {
-        select: { name: formData.vatRegistered === 'yes' ? 'VAT Registered' : 'Not VAT Registered' }
-      };
+      properties['VAT Status'] = { select: { name: formData.vatRegistered === 'yes' ? 'VAT Registered' : 'Not VAT Registered' } };
       
       if (formData.vatNumber) {
         properties['VAT Number'] = { rich_text: [{ text: { content: formData.vatNumber } }] };
       }
     }
 
-    properties['Submitted on'] = {
-      date: { start: new Date().toISOString().split('T')[0] }
-    };
+    properties['Submitted on'] = { date: { start: new Date().toISOString().split('T')[0] } };
 
-    // Add invoice file if generated and uploaded to Cloudinary
+    // Add invoice file
     if (invoiceInfo && invoiceInfo.cloudinaryUrl) {
-      console.log('Adding invoice to Notion with URL:', invoiceInfo.cloudinaryUrl);
-      
       properties['Invoice'] = {
         files: [{
           name: invoiceInfo.filename,
-          external: {
-            url: invoiceInfo.cloudinaryUrl
-          }
+          external: { url: invoiceInfo.cloudinaryUrl }
         }]
       };
     }
 
-    // Add screenshots if uploaded to Cloudinary
+    // Add screenshots
     if (screenshotInfo.length > 0) {
-      // Create proper URL format for Notion
-      properties['Screenshots'] = {
-        url: screenshotInfo[0].cloudinaryUrl  // Use the first screenshot URL
-      };
+      properties['Screenshots'] = { url: screenshotInfo[0].cloudinaryUrl };
       
-      // If multiple screenshots, add them as rich text with clickable links
       if (screenshotInfo.length > 1) {
         const screenshotLinks = screenshotInfo.map((screenshot, index) => 
           `📷 Screenshot ${index + 1}: ${screenshot.cloudinaryUrl}`
         ).join('\n');
         
-        properties['Screenshot Links'] = {
-          rich_text: [{ 
-            text: { 
-              content: screenshotLinks,
-              link: null 
-            }
-          }]
-        };
+        properties['Screenshot Links'] = { rich_text: [{ text: { content: screenshotLinks } }] };
       }
     }
 
-    // Create Notion page
-    console.log('Creating Notion page...');
     const response = await notion.pages.create({
       parent: { type: "database_id", database_id: DATABASE_ID },
       properties: properties
     });
-
-    console.log('Notion page created successfully:', response.id);
 
     return {
       statusCode: 200,
