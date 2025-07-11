@@ -666,6 +666,14 @@
                             <label>Sort Code *</label>
                             <input type="text" id="sortCodeInput" placeholder="12-34-56">
                         </div>
+
+                        <div class="form-group full-width" id="invoiceUploadGroup" style="display: none;">
+                            <label>Upload Your Invoice *</label>
+                            <input type="file" id="invoiceFileInput" accept=".pdf" required>
+                            <small style="color: #6b7280; display: block; margin-top: 5px;">
+                                Please upload your invoice as a PDF file
+                            </small>
+                        </div>
                     </div>
                 </div>
 
@@ -999,16 +1007,19 @@
             radios.forEach(radio => radio.checked = false);
             event.target.closest('.method-option').querySelector('input').checked = true;
             
-            // Show/hide address and bank fields based on method
+            // Show/hide fields based on method
             const addressGroup = document.getElementById('addressGroup');
             const bankGroups = ['bankGroup1', 'bankGroup2', 'bankGroup3', 'bankGroup4'];
+            const invoiceUploadGroup = document.getElementById('invoiceUploadGroup');
             
             if (method === 'upload') {
                 addressGroup.style.display = 'none';
                 bankGroups.forEach(id => document.getElementById(id).style.display = 'none');
+                invoiceUploadGroup.style.display = 'block';
             } else {
                 addressGroup.style.display = 'block';
                 bankGroups.forEach(id => document.getElementById(id).style.display = 'block');
+                invoiceUploadGroup.style.display = 'none';
             }
         }
         
