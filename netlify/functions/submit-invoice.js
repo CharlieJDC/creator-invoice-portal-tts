@@ -1,1352 +1,453 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Creator Invoice Portal - TMMB Agency</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: #f1f5f9;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-        
-        .header {
-            background: #1e293b;
-            color: white;
-            padding: 30px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        
-        .header-flex {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-        
-        .logo {
-            background: #1e293b;
-            color: #ef4444;
-            font-weight: 900;
-            font-size: 32px;
-            padding: 15px 25px;
-            border-radius: 10px;
-            font-style: italic;
-        }
-        
-        .header h1 {
-            font-size: 32px;
-            margin-bottom: 5px;
-        }
-        
-        .header p {
-            color: #cbd5e1;
-            font-size: 16px;
-        }
-        
-        .main-content {
-            background: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        
-        .progress-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 30px;
-        }
-        
-        .progress-step {
-            display: flex;
-            align-items: center;
-        }
-        
-        .step-number {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 14px;
-        }
-        
-        .step-number.active {
-            background: #ef4444;
-            color: white;
-        }
-        
-        .step-number.completed {
-            background: #10b981;
-            color: white;
-        }
-        
-        .step-number.inactive {
-            background: #d1d5db;
-            color: #6b7280;
-        }
-        
-        .step-title {
-            margin-left: 10px;
-            font-size: 14px;
-            font-weight: 500;
-        }
-        
-        .step-line {
-            flex: 1;
-            height: 2px;
-            background: #d1d5db;
-            margin: 0 15px;
-        }
-        
-        .step-line.completed {
-            background: #10b981;
-        }
-        
-        .selection-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-            max-width: 700px;
-            margin: 0 auto;
-        }
-        
-        .selection-card {
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 30px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: white;
-        }
-        
-        .selection-card:hover {
-            border-color: #ef4444;
-            background: #fef2f2;
-            transform: translateY(-2px);
-        }
-        
-        .icon {
-            font-size: 48px;
-            margin-bottom: 20px;
-        }
-        
-        .selection-card h3 {
-            font-size: 20px;
-            font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 10px;
-        }
-        
-        .selection-card p {
-            color: #6b7280;
-            margin-bottom: 15px;
-        }
-        
-        .note {
-            background: #f9fafb;
-            padding: 12px;
-            border-radius: 5px;
-            font-size: 14px;
-            color: #6b7280;
-        }
-        
-        .form-section {
-            margin-bottom: 30px;
-        }
-        
-        .form-section h2 {
-            font-size: 24px;
-            color: #1f2937;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        .form-group.full-width {
-            grid-column: 1 / -1;
-        }
-        
-        .form-group label {
-            display: block;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-        
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 5px;
-            font-size: 14px;
-            transition: border-color 0.3s ease;
-        }
-        
-        .form-group input:focus,
-        .form-group textarea:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #ef4444;
-            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
-        }
-        
-        .button {
-            background: #ef4444;
-            color: white;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-        
-        .button:hover {
-            background: #dc2626;
-        }
-        
-        .button.secondary {
-            background: #6b7280;
-        }
-        
-        .button.secondary:hover {
-            background: #4b5563;
-        }
-        
-        .button.success {
-            background: #10b981;
-        }
-        
-        .button.success:hover {
-            background: #059669;
-        }
-        
-        .button-row {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
-        }
-        
-        .success-message {
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            border-radius: 10px;
-            padding: 30px;
-            text-align: center;
-            margin: 20px 0;
-        }
-        
-        .success-icon {
-            font-size: 60px;
-            margin-bottom: 20px;
-        }
-        
-        .success-message h3 {
-            color: #047857;
-            font-size: 20px;
-            margin-bottom: 10px;
-        }
-        
-        .success-message p {
-            color: #065f46;
-            margin-bottom: 15px;
-        }
-        
-        .hidden {
-            display: none;
-        }
-        
-        .text-center {
-            text-align: center;
-        }
-        
-        .mb-4 {
-            margin-bottom: 20px;
-        }
-        
-        .mt-4 {
-            margin-top: 20px;
-        }
-        
-        .invoice-method {
-            background: #dbeafe;
-            border: 1px solid #bfdbfe;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        
-        .invoice-method h3 {
-            color: #1e40af;
-            margin-bottom: 15px;
-        }
-        
-        .method-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-        }
-        
-        .method-option {
-            padding: 15px;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: white;
-        }
-        
-        .method-option:hover {
-            border-color: #ef4444;
-        }
-        
-        .method-option.selected {
-            border-color: #ef4444;
-            background: #fef2f2;
-        }
-        
-        .method-option h4 {
-            color: #1f2937;
-            margin-bottom: 5px;
-        }
-        
-        .method-option p {
-            color: #6b7280;
-            font-size: 14px;
-        }
-        
-        .tier-display {
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-        
-        .tier-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            text-align: center;
-        }
-        
-        .tier-item {
-            padding: 10px;
-        }
-        
-        .tier-name {
-            font-weight: bold;
-            color: #dc2626;
-        }
-        
-        .tier-range {
-            font-size: 14px;
-            color: #6b7280;
-        }
-        
-        .tier-amount {
-            font-weight: bold;
-            color: #1f2937;
-        }
-        
-        .alert {
-            padding: 15px;
-            border-radius: 8px;
-            margin: 15px 0;
-        }
-        
-        .alert-info {
-            background: #eff6ff;
-            border: 1px solid #bfdbfe;
-            color: #1e40af;
-        }
-        
-        .alert-warning {
-            background: #fffbeb;
-            border: 1px solid #fed7aa;
-            color: #92400e;
-        }
-        
-        .alert-success {
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            color: #047857;
-        }
-        
-        .file-preview {
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            border-radius: 8px;
-            padding: 15px;
-        }
-        
-        .file-list {
-            display: grid;
-            gap: 10px;
-        }
-        
-        .file-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px;
-            background: white;
-            border-radius: 5px;
-            border: 1px solid #d1fae5;
-        }
-        
-        .file-icon {
-            width: 20px;
-            height: 20px;
-            background: #10b981;
-            border-radius: 3px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 12px;
-        }
-        
-        .file-info {
-            flex: 1;
-        }
-        
-        .file-name {
-            font-weight: 500;
-            color: #065f46;
-        }
-        
-        .file-size {
-            font-size: 12px;
-            color: #047857;
-        }
-        
-        .account-section {
-            position: relative;
-        }
-        
-        .remove-account {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            background: #ef4444;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 14px;
-        }
+// netlify/functions/submit-invoice.js
+const { Client } = require('@notionhq/client');
+const multipart = require('lambda-multipart-parser');
+const PDFDocument = require('pdfkit');
+const cloudinary = require('cloudinary').v2;
 
-        .vat-section {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-        }
+// Initialize Notion client
+const notion = new Client({
+  auth: process.env.NOTION_TOKEN,
+});
 
-        .vat-section h3 {
-            color: #1e40af;
-            margin-bottom: 15px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div class="header-flex">
-                <div class="logo">TMMB</div>
-                <div>
-                    <h1>Creator Invoice Portal</h1>
-                    <p>Submit your monthly retainer or rewards invoice</p>
-                </div>
-            </div>
-        </div>
+const DATABASE_ID = process.env.NOTION_DATABASE_ID;
 
-        <div class="main-content">
-            <!-- Step 0: Selection -->
-            <div id="step0">
-                <div class="text-center mb-4">
-                    <h2 style="font-size: 28px; color: #1f2937; margin-bottom: 15px;">How are you submitting your invoice?</h2>
-                    <p style="font-size: 18px; color: #6b7280;">Please select the type of submission</p>
-                </div>
-                
-                <div class="selection-grid">
-                    <div class="selection-card" onclick="selectType('individual')">
-                        <div class="icon">👤</div>
-                        <h3>Individual Creator</h3>
-                        <p>Submitting as a personal creator</p>
-                        <div class="note">
-                            <strong>Note:</strong> Individual submissions are assumed to be non-VAT registered
-                        </div>
-                    </div>
+// Brand configurations
+const BRAND_CONFIGS = {
+  'dr-dent': {
+    name: 'dr-dent',
+    displayName: 'Dr Dent',
+    billingDetails: {
+      companyName: 'Galactic Brands LTD',
+      address: `19 Haines Place
+Bewdley Street
+Evesham
+WR11 4AD
+GB`,
+      email: 'billing@galacticbrands.com',
+      phone: '+44 xxx xxx xxxx'
+    },
+    retainerTiers: {
+      'tier1': { name: 'Tier 1', gmvRange: '<£10k', amount: 450 },
+      'tier2': { name: 'Tier 2', gmvRange: '£10k - £25k', amount: 600 },
+      'tier3': { name: 'Tier 3', gmvRange: '£25k - £50k', amount: 850 },
+      'tier4': { name: 'Tier 4', gmvRange: '£50k+', amount: 1000 }
+    }
+  }
+};
 
-                    <div class="selection-card" onclick="selectType('business')">
-                        <div class="icon">🏢</div>
-                        <h3>Business Entity</h3>
-                        <p>Submitting as a registered business</p>
-                        <div class="note">
-                            <strong>Note:</strong> You'll select VAT registration status on the next page
-                        </div>
-                    </div>
-                </div>
-            </div>
+function getBrandConfig(brandKey) {
+  return BRAND_CONFIGS[brandKey] || BRAND_CONFIGS['dr-dent'];
+}
 
-            <!-- Step 1: Details Form -->
-            <div id="step1" class="hidden">
-                <div class="progress-bar">
-                    <div class="progress-step">
-                        <div class="step-number active">1</div>
-                        <span class="step-title">Details</span>
-                    </div>
-                    <div class="step-line"></div>
-                    <div class="progress-step">
-                        <div class="step-number inactive">2</div>
-                        <span class="step-title">Invoice Setup</span>
-                    </div>
-                    <div class="step-line"></div>
-                    <div class="progress-step">
-                        <div class="step-number inactive">3</div>
-                        <span class="step-title">Evidence Upload</span>
-                    </div>
-                    <div class="step-line"></div>
-                    <div class="progress-step">
-                        <div class="step-number inactive">4</div>
-                        <span class="step-title">Review & Submit</span>
-                    </div>
-                </div>
+// Upload file to Cloudinary and return public URL
+async function uploadToCloudinary(buffer, filename, resourceType = 'auto') {
+  try {
+    return new Promise((resolve, reject) => {
+      const uploadOptions = {
+        resource_type: resourceType,
+        public_id: `tmmb-invoices/${Date.now()}-${filename.replace(/\.[^/.]+$/, "")}`,
+        use_filename: false,
+        unique_filename: false,
+        folder: 'tmmb-invoices'
+      };
 
-                <div class="invoice-method">
-                    <h3>Choose Your Invoice Method</h3>
-                    <div class="method-grid">
-                        <div class="method-option selected" onclick="selectMethod('generate')">
-                            <div style="display: flex; align-items: center; margin-bottom: 10px;">
-                                <input type="radio" name="method" checked style="margin-right: 10px;">
-                                <h4>Generate Invoice for Me</h4>
-                            </div>
-                            <p>We'll create and send the invoice based on your GMV verification</p>
-                        </div>
-                        
-                        <div class="method-option" onclick="selectMethod('upload')">
-                            <div style="display: flex; align-items: center; margin-bottom: 10px;">
-                                <input type="radio" name="method" style="margin-right: 10px;">
-                                <h4>Upload My Own Invoice</h4>
-                            </div>
-                            <p>I've created my own invoice and will upload it as a PDF</p>
-                        </div>
-                    </div>
-                </div>
+      if (resourceType === 'raw') {
+        uploadOptions.flags = 'attachment';
+      }
 
-                <div class="form-section">
-                    <h2 id="formTitle">👤 Individual Creator Details</h2>
-                    
-                    <div class="form-grid">
-                        <div class="form-group full-width">
-                            <label id="nameLabel">Full Name *</label>
-                            <input type="text" id="nameInput" placeholder="Your full legal name">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Email Address *</label>
-                            <input type="email" id="emailInput" placeholder="your@email.com">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Discord Username *</label>
-                            <input type="text" id="discordInput" placeholder="@yourusername" required>
-                            <small style="color: #6b7280; display: block; margin-top: 5px;">
-                                Used for communication about your invoice
-                            </small>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Phone Number</label>
-                            <input type="tel" id="phoneInput" placeholder="+44 xxx xxx xxxx">
-                        </div>
-                        
-                        <div class="form-group full-width" id="addressGroup">
-                            <label>Address *</label>
-                            <textarea id="addressInput" placeholder="Full address including postcode" rows="3"></textarea>
-                        </div>
-                        
-                        <div class="form-group" id="contactGroup" style="display: none;">
-                            <label>Contact Person *</label>
-                            <input type="text" id="contactInput" placeholder="Primary contact name">
-                        </div>
-
-                        <!-- VAT Registration Section for Business -->
-                        <div class="form-group full-width" id="vatGroup" style="display: none;">
-                            <div class="vat-section">
-                                <h3>VAT Registration Status *</h3>
-                                <div class="method-grid" style="margin-top: 10px;">
-                                    <div class="method-option" onclick="selectVatStatus('yes')">
-                                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
-                                            <input type="radio" name="vatStatus" value="yes" style="margin-right: 10px;">
-                                            <h4>VAT Registered</h4>
-                                        </div>
-                                        <p>Business is registered for VAT (20% will be added to invoice)</p>
-                                    </div>
-                                    
-                                    <div class="method-option" onclick="selectVatStatus('no')">
-                                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
-                                            <input type="radio" name="vatStatus" value="no" style="margin-right: 10px;">
-                                            <h4>Not VAT Registered</h4>
-                                        </div>
-                                        <p>Business is not registered for VAT</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-group" id="vatNumberGroup" style="display: none;">
-                            <label>VAT Number</label>
-                            <input type="text" id="vatNumberInput" placeholder="GB123456789">
-                            <small style="color: #6b7280; display: block; margin-top: 5px;">
-                                Optional - will be shown on invoice if provided
-                            </small>
-                        </div>
-
-                        <div class="form-group" id="bankGroup1">
-                            <label>Bank Name *</label>
-                            <input type="text" id="bankInput" placeholder="e.g. Barclays, HSBC">
-                        </div>
-                        
-                        <div class="form-group" id="bankGroup2">
-                            <label>Account Name *</label>
-                            <input type="text" id="accountNameInput" placeholder="Name on account">
-                        </div>
-                        
-                        <div class="form-group" id="bankGroup3">
-                            <label>Account Number *</label>
-                            <input type="text" id="accountNumberInput" placeholder="12345678">
-                        </div>
-                        
-                        <div class="form-group" id="bankGroup4">
-                            <label>Sort Code *</label>
-                            <input type="text" id="sortCodeInput" placeholder="12-34-56">
-                        </div>
-
-                        <div class="form-group full-width" id="invoiceUploadGroup" style="display: none;">
-                            <label>Upload Your Invoice *</label>
-                            <input type="file" id="invoiceFileInput" accept=".pdf" required>
-                            <small style="color: #6b7280; display: block; margin-top: 5px;">
-                                Please upload your invoice as a PDF file
-                            </small>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="button-row">
-                    <button class="button secondary" onclick="goToStep(0)">Change Selection</button>
-                    <button class="button" onclick="goToStep(2)">Continue</button>
-                </div>
-            </div>
-
-            <!-- Step 2: Invoice Setup -->
-            <div id="step2" class="hidden">
-                <div class="progress-bar">
-                    <div class="progress-step">
-                        <div class="step-number completed">✓</div>
-                        <span class="step-title">Details</span>
-                    </div>
-                    <div class="step-line completed"></div>
-                    <div class="progress-step">
-                        <div class="step-number active">2</div>
-                        <span class="step-title">Invoice Setup</span>
-                    </div>
-                    <div class="step-line"></div>
-                    <div class="progress-step">
-                        <div class="step-number inactive">3</div>
-                        <span class="step-title">Evidence Upload</span>
-                    </div>
-                    <div class="step-line"></div>
-                    <div class="progress-step">
-                        <div class="step-number inactive">4</div>
-                        <span class="step-title">Review & Submit</span>
-                    </div>
-                </div>
-
-                <div class="form-section">
-                    <h2>🏢 Invoice Setup</h2>
-                    
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Brand</label>
-                            <select>
-                                <option value="Dr Dent">Dr Dent</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Invoice Type</label>
-                            <select id="invoiceTypeSelect" onchange="updateInvoiceType()">
-                                <option value="retainer">Monthly Retainer</option>
-                                <option value="rewards">Rewards Campaign</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group full-width">
-                            <label id="periodLabel">Period (e.g., June 2025)</label>
-                            <input type="text" id="periodInput" placeholder="e.g., June 2025">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="tier-display" id="tierDisplay">
-                    <h3 style="color: #dc2626; margin-bottom: 15px;">Select Your Retainer Tier</h3>
-                    <p style="color: #6b7280; margin-bottom: 15px;">Choose the tier that matches your expected GMV. This will be verified against your uploaded screenshots.</p>
-                    <div class="tier-grid">
-                        <div class="tier-item">
-                            <input type="radio" name="tier" value="tier1" id="tier1" style="margin-bottom: 10px;">
-                            <label for="tier1" style="cursor: pointer;">
-                                <div class="tier-name">Tier 1</div>
-                                <div class="tier-range">&lt;£10k GMV</div>
-                                <div class="tier-amount">£450</div>
-                            </label>
-                        </div>
-                        <div class="tier-item">
-                            <input type="radio" name="tier" value="tier2" id="tier2" style="margin-bottom: 10px;">
-                            <label for="tier2" style="cursor: pointer;">
-                                <div class="tier-name">Tier 2</div>
-                                <div class="tier-range">£10k - £25k</div>
-                                <div class="tier-amount">£600</div>
-                            </label>
-                        </div>
-                        <div class="tier-item">
-                            <input type="radio" name="tier" value="tier3" id="tier3" style="margin-bottom: 10px;">
-                            <label for="tier3" style="cursor: pointer;">
-                                <div class="tier-name">Tier 3</div>
-                                <div class="tier-range">£25k - £50k</div>
-                                <div class="tier-amount">£850</div>
-                            </label>
-                        </div>
-                        <div class="tier-item">
-                            <input type="radio" name="tier" value="tier4" id="tier4" style="margin-bottom: 10px;">
-                            <label for="tier4" style="cursor: pointer;">
-                                <div class="tier-name">Tier 4</div>
-                                <div class="tier-range">£50k+</div>
-                                <div class="tier-amount">£1,000</div>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="alert alert-warning" style="margin-top: 15px;">
-                        <strong>Note:</strong> If your uploaded screenshots don't match the selected tier, TMMB will adjust the invoice accordingly.
-                    </div>
-                </div>
-
-                <div class="tier-display" id="rewardAmountDisplay" style="display: none;">
-                    <h3 style="color: #dc2626; margin-bottom: 15px;">Reward Amount</h3>
-                    <p style="color: #6b7280; margin-bottom: 15px;">Enter the monetary amount for the reward you are claiming.</p>
-                    <div class="form-group" style="max-width: 300px; margin: 0 auto;">
-                        <label>Reward Amount (£) *</label>
-                        <input type="number" id="rewardAmountInput" placeholder="0.00" step="0.01" min="0">
-                        <small style="color: #6b7280; display: block; margin-top: 5px;">
-                            Enter the amount without the £ symbol
-                        </small>
-                    </div>
-                </div>
-
-                <div class="button-row">
-                    <button class="button secondary" onclick="goToStep(1)">Previous</button>
-                    <button class="button" onclick="goToStep(3)">Continue</button>
-                </div>
-            </div>
-
-            <!-- Step 3: Evidence Upload -->
-            <div id="step3" class="hidden">
-                <div class="progress-bar">
-                    <div class="progress-step">
-                        <div class="step-number completed">✓</div>
-                        <span class="step-title">Details</span>
-                    </div>
-                    <div class="step-line completed"></div>
-                    <div class="progress-step">
-                        <div class="step-number completed">✓</div>
-                        <span class="step-title">Invoice Setup</span>
-                    </div>
-                    <div class="step-line completed"></div>
-                    <div class="progress-step">
-                        <div class="step-number active">3</div>
-                        <span class="step-title">Evidence Upload</span>
-                    </div>
-                    <div class="step-line"></div>
-                    <div class="progress-step">
-                        <div class="step-number inactive">4</div>
-                        <span class="step-title">Review & Submit</span>
-                    </div>
-                </div>
-
-                <div class="form-section">
-                    <h2>📷 GMV Evidence Upload</h2>
-                    
-                    <div class="alert alert-info">
-                        <strong>📋 Instructions:</strong> Upload clear screenshots of your TikTok analytics showing GMV for Dr Dent products during your specified period. These will be reviewed manually by TMMB team.
-                    </div>
-
-                    <div id="accountsContainer">
-                        <div class="account-section" style="border: 1px solid #d1d5db; border-radius: 8px; padding: 20px; margin: 20px 0;">
-                            <h3 style="margin-bottom: 15px;">Account 1</h3>
-                            
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label>TikTok Handle *</label>
-                                    <input type="text" id="handle1" placeholder="@yourusername" required>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label>Upload Screenshots *</label>
-                                    <input type="file" id="screenshots1" accept="image/*" multiple onchange="handleFileUpload(1)" required>
-                                    <small style="color: #6b7280; display: block; margin-top: 5px;">
-                                        You can select multiple screenshots. Accepted formats: JPG, PNG, WEBP
-                                    </small>
-                                </div>
-                            </div>
-                            
-                            <div id="filePreview1" class="file-preview" style="display: none; margin-top: 15px;">
-                                <h4 style="color: #10b981; margin-bottom: 10px;">✅ Files Ready for Upload:</h4>
-                                <div id="fileList1" class="file-list"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button class="button secondary" onclick="addAccount()" style="margin: 20px 0;">
-                        ➕ Add Another Account
-                    </button>
-
-                    <div class="alert alert-warning" style="margin-top: 20px;">
-                        <h4 style="color: #92400e; margin-bottom: 10px;">Manual Review Process:</h4>
-                        <p>• TMMB team will review your screenshots to calculate total GMV</p>
-                        <p>• Your retainer tier will be determined based on the verified GMV</p>
-                        <p>• You'll receive confirmation within 24 hours</p>
-                    </div>
-                </div>
-
-                <div class="button-row">
-                    <button class="button secondary" onclick="goToStep(2)">Previous</button>
-                    <button class="button" onclick="goToStep(4)">Continue</button>
-                </div>
-            </div>
-
-            <!-- Step 4: Review & Submit -->
-            <div id="step4" class="hidden">
-                <div class="progress-bar">
-                    <div class="progress-step">
-                        <div class="step-number completed">✓</div>
-                        <span class="step-title">Details</span>
-                    </div>
-                    <div class="step-line completed"></div>
-                    <div class="progress-step">
-                        <div class="step-number completed">✓</div>
-                        <span class="step-title">Invoice Setup</span>
-                    </div>
-                    <div class="step-line completed"></div>
-                    <div class="progress-step">
-                        <div class="step-number completed">✓</div>
-                        <span class="step-title">Evidence Upload</span>
-                    </div>
-                    <div class="step-line completed"></div>
-                    <div class="progress-step">
-                        <div class="step-number active">4</div>
-                        <span class="step-title">Review & Submit</span>
-                    </div>
-                </div>
-
-                <div class="form-section">
-                    <h2>✅ Review & Submit</h2>
-                    
-                    <div class="alert alert-info">
-                        <h3 style="color: #1e40af; margin-bottom: 15px;">Invoice Summary</h3>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
-                            <div>
-                                <p><strong>Submitter:</strong> <span id="reviewName">John Smith</span></p>
-                                <p><strong>Email:</strong> <span id="reviewEmail">john@example.com</span></p>
-                                <p><strong>Discord:</strong> <span id="reviewDiscord">@username</span></p>
-                                <p><strong>Brand:</strong> Dr Dent</p>
-                                <p><strong>Type:</strong> <span id="reviewType">Monthly Retainer</span></p>
-                            </div>
-                            <div>
-                                <p><strong>Period:</strong> <span id="reviewPeriod">June 2025</span></p>
-                                <p><strong>Accounts:</strong> <span id="reviewAccounts">1 TikTok account</span></p>
-                                <p><strong>Screenshots:</strong> <span id="reviewScreenshots">Files uploaded</span></p>
-                                <p><strong>Selected Tier:</strong> <span id="reviewTier">Not selected</span></p>
-                                <p><strong>VAT Status:</strong> <span id="reviewVat">Individual (Non-VAT)</span></p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="button-row">
-                    <button class="button secondary" onclick="goToStep(3)">Previous</button>
-                    <button class="button success" onclick="submitInvoice()">📤 Submit Invoice</button>
-                </div>
-            </div>
-
-            <!-- Step 5: Success -->
-            <div id="step5" class="hidden">
-                <div class="success-message">
-                    <div class="success-icon">✅</div>
-                    <h3>Invoice Submitted Successfully!</h3>
-                    <p>Your invoice has been submitted to TMMB Agency and will be reviewed within 24 hours.</p>
-                    <p><strong>Email confirmation sent to:</strong> <span id="successEmail">john@example.com</span></p>
-                    <p style="font-size: 14px; color: #065f46;">Your submission has been logged in Notion for review.</p>
-                    
-                    <div class="mt-4">
-                        <button class="button" onclick="goToStep(0)">Submit Another Invoice</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        let currentStep = 0;
-        let submissionType = '';
-        let invoiceMethod = 'generate';
-        let accountCount = 1;
-        let uploadedFiles = {};
-        
-        // Debug log
-        console.log('JavaScript loaded successfully');
-        
-        function selectType(type) {
-            console.log('selectType called with:', type);
-            submissionType = type;
-            
-            // Update form labels and fields based on selection
-            if (type === 'individual') {
-                document.getElementById('formTitle').innerHTML = '👤 Individual Creator Details';
-                document.getElementById('nameLabel').textContent = 'Full Name *';
-                document.getElementById('nameInput').placeholder = 'Your full legal name';
-                document.getElementById('contactGroup').style.display = 'none';
-                document.getElementById('vatGroup').style.display = 'none';
-                document.getElementById('vatNumberGroup').style.display = 'none';
-            } else {
-                document.getElementById('formTitle').innerHTML = '🏢 Business Entity Details';
-                document.getElementById('nameLabel').textContent = 'Business Name *';
-                document.getElementById('nameInput').placeholder = 'Registered business name';
-                document.getElementById('contactGroup').style.display = 'block';
-                document.getElementById('vatGroup').style.display = 'block';
-            }
-            
-            goToStep(1);
-        }
-
-        function selectVatStatus(status) {
-            console.log('selectVatStatus called with:', status);
-            // Update VAT status selection UI
-            const options = document.querySelectorAll('#vatGroup .method-option');
-            options.forEach(option => option.classList.remove('selected'));
-            event.target.closest('.method-option').classList.add('selected');
-            
-            // Update radio buttons
-            const radios = document.querySelectorAll('input[name="vatStatus"]');
-            radios.forEach(radio => radio.checked = false);
-            event.target.closest('.method-option').querySelector('input').checked = true;
-            
-            // Show/hide VAT number field
-            const vatNumberGroup = document.getElementById('vatNumberGroup');
-            if (status === 'yes') {
-                vatNumberGroup.style.display = 'block';
-            } else {
-                vatNumberGroup.style.display = 'none';
-            }
-        }
-        
-        function selectMethod(method) {
-            console.log('selectMethod called with:', method);
-            invoiceMethod = method;
-            
-            // Update method selection UI
-            const options = document.querySelectorAll('.method-option');
-            options.forEach(option => option.classList.remove('selected'));
-            event.target.closest('.method-option').classList.add('selected');
-            
-            // Update radio buttons
-            const radios = document.querySelectorAll('input[name="method"]');
-            radios.forEach(radio => radio.checked = false);
-            event.target.closest('.method-option').querySelector('input').checked = true;
-            
-            // Show/hide fields based on method
-            const addressGroup = document.getElementById('addressGroup');
-            const bankGroups = ['bankGroup1', 'bankGroup2', 'bankGroup3', 'bankGroup4'];
-            const invoiceUploadGroup = document.getElementById('invoiceUploadGroup');
-            
-            if (method === 'upload') {
-                addressGroup.style.display = 'none';
-                bankGroups.forEach(id => document.getElementById(id).style.display = 'none');
-                invoiceUploadGroup.style.display = 'block';
-            } else {
-                addressGroup.style.display = 'block';
-                bankGroups.forEach(id => document.getElementById(id).style.display = 'block');
-                invoiceUploadGroup.style.display = 'none';
-            }
-        }
-        
-        function handleFileUpload(accountNumber) {
-            console.log('handleFileUpload called for account:', accountNumber);
-            const fileInput = document.getElementById(`screenshots${accountNumber}`);
-            const files = fileInput.files;
-            
-            if (files.length > 0) {
-                uploadedFiles[accountNumber] = Array.from(files);
-                displayFilePreview(accountNumber, files);
-            }
-        }
-        
-        function displayFilePreview(accountNumber, files) {
-            const previewDiv = document.getElementById(`filePreview${accountNumber}`);
-            const fileListDiv = document.getElementById(`fileList${accountNumber}`);
-            
-            fileListDiv.innerHTML = '';
-            
-            Array.from(files).forEach(file => {
-                const fileItem = document.createElement('div');
-                fileItem.className = 'file-item';
-                
-                const fileSize = (file.size / 1024 / 1024).toFixed(2) + ' MB';
-                
-                fileItem.innerHTML = `
-                    <div class="file-icon">📷</div>
-                    <div class="file-info">
-                        <div class="file-name">${file.name}</div>
-                        <div class="file-size">${fileSize}</div>
-                    </div>
-                `;
-                
-                fileListDiv.appendChild(fileItem);
+      const uploadStream = cloudinary.uploader.upload_stream(
+        uploadOptions,
+        (error, result) => {
+          if (error) {
+            console.error('Cloudinary upload error:', error);
+            reject(error);
+          } else {
+            console.log('Cloudinary upload success:', result.secure_url);
+            resolve({
+              publicId: result.public_id,
+              url: result.secure_url,
+              filename: result.original_filename || filename
             });
-            
-            previewDiv.style.display = 'block';
+          }
         }
-        
-        function addAccount() {
-            console.log('addAccount called');
-            accountCount++;
-            const container = document.getElementById('accountsContainer');
-            
-            const accountSection = document.createElement('div');
-            accountSection.className = 'account-section';
-            accountSection.style.cssText = 'border: 1px solid #d1d5db; border-radius: 8px; padding: 20px; margin: 20px 0;';
-            accountSection.id = `account${accountCount}`;
-            
-            accountSection.innerHTML = `
-                <button class="remove-account" onclick="removeAccount(${accountCount})" title="Remove this account">×</button>
-                <h3 style="margin-bottom: 15px;">Account ${accountCount}</h3>
-                
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>TikTok Handle *</label>
-                        <input type="text" id="handle${accountCount}" placeholder="@yourusername" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Upload Screenshots *</label>
-                        <input type="file" id="screenshots${accountCount}" accept="image/*" multiple onchange="handleFileUpload(${accountCount})" required>
-                        <small style="color: #6b7280; display: block; margin-top: 5px;">
-                            You can select multiple screenshots. Accepted formats: JPG, PNG, WEBP
-                        </small>
-                    </div>
-                </div>
-                
-                <div id="filePreview${accountCount}" class="file-preview" style="display: none; margin-top: 15px;">
-                    <h4 style="color: #10b981; margin-bottom: 10px;">✅ Files Ready for Upload:</h4>
-                    <div id="fileList${accountCount}" class="file-list"></div>
-                </div>
-            `;
-            
-            container.appendChild(accountSection);
-        }
-        
-        function removeAccount(accountNumber) {
-            console.log('removeAccount called for:', accountNumber);
-            const accountSection = document.getElementById(`account${accountNumber}`);
-            if (accountSection && accountCount > 1) {
-                accountSection.remove();
-                delete uploadedFiles[accountNumber];
-            }
-        }
-        
-        function updateInvoiceType() {
-            console.log('updateInvoiceType called');
-            const select = document.getElementById('invoiceTypeSelect');
-            const periodLabel = document.getElementById('periodLabel');
-            const periodInput = document.getElementById('periodInput');
-            const tierDisplay = document.getElementById('tierDisplay');
-            const rewardAmountDisplay = document.getElementById('rewardAmountDisplay');
-            
-            if (select.value === 'retainer') {
-                periodLabel.textContent = 'Period (e.g., June 2025)';
-                periodInput.placeholder = 'e.g., June 2025';
-                tierDisplay.style.display = 'block';
-                rewardAmountDisplay.style.display = 'none';
-            } else {
-                periodLabel.textContent = 'Reward Claimed';
-                periodInput.placeholder = 'june campaign 5k GMV reward';
-                tierDisplay.style.display = 'none';
-                rewardAmountDisplay.style.display = 'block';
-            }
-        }
-        
-        function submitInvoice() {
-            console.log('submitInvoice called');
-            
-            // Check if tier is selected for retainer type
-            const selectedTier = document.querySelector('input[name="tier"]:checked');
-            if (!selectedTier && document.getElementById('invoiceTypeSelect').value === 'retainer') {
-                alert('Please select a retainer tier before submitting.');
-                return;
-            }
-            
-            // Collect all form data
-            const formData = {
-                submissionType: submissionType,
-                invoiceMethod: invoiceMethod,
-                name: document.getElementById('nameInput').value,
-                email: document.getElementById('emailInput').value,
-                discord: document.getElementById('discordInput').value,
-                phone: document.getElementById('phoneInput').value,
-                address: document.getElementById('addressInput').value,
-                contact: document.getElementById('contactInput')?.value,
-                bankName: document.getElementById('bankInput')?.value,
-                accountName: document.getElementById('accountNameInput')?.value,
-                accountNumber: document.getElementById('accountNumberInput')?.value,
-                sortCode: document.getElementById('sortCodeInput')?.value,
-                brand: 'Dr Dent',
-                invoiceType: document.getElementById('invoiceTypeSelect').value,
-                period: document.getElementById('periodInput').value,
-                selectedTier: selectedTier ? selectedTier.value : null,
-                rewardAmount: document.getElementById('rewardAmountInput')?.value,
-                accounts: [],
-                screenshots: []
-            };
+      );
 
-            // Add VAT information to formData
-            const vatStatus = document.querySelector('input[name="vatStatus"]:checked');
-            if (vatStatus) {
-                formData.vatRegistered = vatStatus.value;
-                formData.vatNumber = document.getElementById('vatNumberInput').value;
-            }
-            
-            // Collect account data and files
-            for (let i = 1; i <= accountCount; i++) {
-                const handleInput = document.getElementById(`handle${i}`);
-                if (handleInput && handleInput.value) {
-                    formData.accounts.push({
-                        handle: handleInput.value,
-                        fileCount: uploadedFiles[i] ? uploadedFiles[i].length : 0
-                    });
-                    
-                    if (uploadedFiles[i]) {
-                        uploadedFiles[i].forEach((file, index) => {
-                            formData.screenshots.push({
-                                account: i,
-                                handle: handleInput.value,
-                                fileName: file.name,
-                                fileSize: file.size,
-                                fileType: file.type,
-                                fileData: file
-                            });
-                        });
-                    }
-                }
-            }
-            
-            console.log('Form data collected:', formData);
-            
-            // Show loading state
-            const submitBtn = event.target;
-            const originalText = submitBtn.textContent;
-            submitBtn.textContent = 'Submitting to Notion...';
-            submitBtn.disabled = true;
-            
-            // Create FormData for file uploads
-            const formDataWithFiles = new FormData();
-            formDataWithFiles.append('data', JSON.stringify(formData));
-            
-            // Add all screenshot files to FormData
-            formData.screenshots.forEach((screenshot, index) => {
-                formDataWithFiles.append(`screenshot_${index}`, screenshot.fileData);
-            });
-            
-            // Add uploaded invoice file if present
-            const invoiceFileInput = document.getElementById('invoiceFileInput');
-            if (invoiceFileInput && invoiceFileInput.files.length > 0) {
-                formDataWithFiles.append('invoiceFileInput', invoiceFileInput.files[0]);
-                console.log('Added invoice file to form data:', invoiceFileInput.files[0].name);
-            }
-            
-            console.log('Submitting to Netlify function...');
-            
-            // Submit to Netlify function
-            fetch('/.netlify/functions/submit-invoice', {
-                method: 'POST',
-                body: formDataWithFiles
-            })
-            .then(response => {
-                console.log('Response status:', response.status);
-                return response.json();
-            })
-            .then(result => {
-                console.log('Submission result:', result);
-                if (result.success) {
-                    // Update success email
-                    const email = document.getElementById('emailInput').value || 'john@example.com';
-                    document.getElementById('successEmail').textContent = email;
-                    goToStep(5);
-                } else {
-                    alert('Error submitting invoice: ' + result.error);
-                    console.error('Submission error:', result);
-                }
-            })
-            .catch(error => {
-                console.error('Network error:', error);
-                alert('Error submitting invoice. Please check the console for details.');
-            })
-            .finally(() => {
-                // Reset button
-                submitBtn.textContent = originalText;
-                submitBtn.disabled = false;
-            });
-        }
-        
-        function goToStep(step) {
-            console.log('goToStep called with:', step);
-            
-            // Hide all steps
-            for (let i = 0; i <= 5; i++) {
-                const stepElement = document.getElementById('step' + i);
-                if (stepElement) stepElement.classList.add('hidden');
-            }
-            
-            // Show current step
-            const currentStepElement = document.getElementById('step' + step);
-            if (currentStepElement) {
-                currentStepElement.classList.remove('hidden');
-            } else {
-                console.error('Could not find step element:', 'step' + step);
-            }
-            
-            currentStep = step;
-            
-            // Scroll to top
-            window.scrollTo(0, 0);
-            
-            // Update review section with form data
-            if (step === 4) {
-                const name = document.getElementById('nameInput').value || 'John Smith';
-                const email = document.getElementById('emailInput').value || 'john@example.com';
-                const discord = document.getElementById('discordInput').value || '@username';
-                const period = document.getElementById('periodInput').value || 'June 2025';
-                const invoiceType = document.getElementById('invoiceTypeSelect').value;
-                
-                document.getElementById('reviewName').textContent = name;
-                document.getElementById('reviewEmail').textContent = email;
-                document.getElementById('reviewDiscord').textContent = discord;
-                document.getElementById('reviewPeriod').textContent = period;
-                document.getElementById('reviewType').textContent = invoiceType === 'retainer' ? 'Monthly Retainer' : 'Rewards Campaign';
-                
-                // Count accounts and screenshots
-                let accountsCount = 0;
-                let screenshotsCount = 0;
-                
-                for (let i = 1; i <= accountCount; i++) {
-                    const handleInput = document.getElementById(`handle${i}`);
-                    if (handleInput && handleInput.value) {
-                        accountsCount++;
-                        if (uploadedFiles[i]) {
-                            screenshotsCount += uploadedFiles[i].length;
-                        }
-                    }
-                }
-                
-                document.getElementById('reviewAccounts').textContent = `${accountsCount} TikTok account${accountsCount !== 1 ? 's' : ''}`;
-                document.getElementById('reviewScreenshots').textContent = `${screenshotsCount} screenshot${screenshotsCount !== 1 ? 's' : ''} uploaded`;
-                
-                // Show selected tier
-                const selectedTier = document.querySelector('input[name="tier"]:checked');
-                if (selectedTier) {
-                    const tierLabels = {
-                        'tier1': 'Tier 1 (£450)',
-                        'tier2': 'Tier 2 (£600)', 
-                        'tier3': 'Tier 3 (£850)',
-                        'tier4': 'Tier 4 (£1,000)'
-                    };
-                    document.getElementById('reviewTier').textContent = tierLabels[selectedTier.value];
-                } else {
-                    document.getElementById('reviewTier').textContent = 'Not selected';
-                }
+      uploadStream.end(buffer);
+    });
+  } catch (error) {
+    console.error('Error uploading to Cloudinary:', error);
+    throw error;
+  }
+}
 
-                // Show VAT status
-                const vatStatus = document.querySelector('input[name="vatStatus"]:checked');
-                let vatText = 'Individual (Non-VAT)';
-                if (submissionType === 'business') {
-                    if (vatStatus && vatStatus.value === 'yes') {
-                        vatText = 'Business (VAT Registered)';
-                    } else {
-                        vatText = 'Business (Non-VAT)';
-                    }
-                }
-                document.getElementById('reviewVat').textContent = vatText;
-            }
-        }
-        
-        // Initialize when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, initializing app');
-            goToStep(0);
+// Generate PDF invoice using PDFKit
+async function generateInvoicePDF(formData) {
+  return new Promise((resolve, reject) => {
+    try {
+      const brandConfig = getBrandConfig('dr-dent');
+      
+      // Calculate amount based on invoice type
+      let netAmount;
+      if (formData.invoiceType === 'retainer') {
+        netAmount = brandConfig.retainerTiers[formData.selectedTier]?.amount || 450;
+      } else {
+        // For rewards, use the provided amount
+        netAmount = parseFloat(formData.rewardAmount) || 0;
+      }
+      
+      // VAT calculation
+      const isVatRegistered = formData.submissionType === 'business' && formData.vatRegistered === 'yes';
+      const vatRate = 0.20;
+      const vatAmount = isVatRegistered ? Math.round(netAmount * vatRate * 100) / 100 : 0;
+      const totalAmount = netAmount + vatAmount;
+      
+      const invoiceNumber = `DR-DENT-${Date.now()}`;
+      const doc = new PDFDocument({ margin: 60, size: 'A4' });
+      
+      let buffers = [];
+      doc.on('data', buffers.push.bind(buffers));
+      doc.on('end', () => {
+        const pdfData = Buffer.concat(buffers);
+        resolve({
+          buffer: pdfData,
+          filename: `invoice-${invoiceNumber}.pdf`,
+          invoiceNumber: invoiceNumber
         });
-        
-        // Fallback initialization
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', function() {
-                console.log('DOM loaded (fallback), initializing app');
-                goToStep(0);
-            });
-        } else {
-            console.log('DOM already loaded, initializing app immediately');
-            goToStep(0);
+      });
+      
+      // Invoice title - large, centered, spaced
+      doc.fontSize(36)
+         .font('Helvetica')
+         .text('INVOICE', 60, 120, { align: 'center', characterSpacing: 8 });
+      
+      // Billed To section (left side) - Brand details
+      doc.fontSize(12)
+         .font('Helvetica-Bold')
+         .text('BILLED TO:', 60, 200);
+      
+      doc.fontSize(11)
+         .font('Helvetica')
+         .text(brandConfig.billingDetails.companyName, 60, 220);
+      
+      const brandAddressLines = brandConfig.billingDetails.address.split('\n');
+      let yPosition = 235;
+      brandAddressLines.forEach(line => {
+        doc.text(line.trim(), 60, yPosition);
+        yPosition += 15;
+      });
+      
+      // From section (right side) - Creator details
+      doc.fontSize(12)
+         .font('Helvetica-Bold')
+         .text('FROM:', 400, 200);
+      
+      doc.fontSize(11)
+         .font('Helvetica')
+         .text(formData.name, 400, 220);
+      
+      if (formData.address) {
+        const creatorAddressLines = formData.address.split('\n');
+        let creatorYPosition = 235;
+        creatorAddressLines.forEach(line => {
+          doc.text(line.trim(), 400, creatorYPosition);
+          creatorYPosition += 15;
+        });
+      }
+      
+      // Date section
+      doc.fontSize(12)
+         .font('Helvetica-Bold')
+         .text('DATE:', 400, 300);
+      
+      doc.fontSize(11)
+         .font('Helvetica')
+         .text(new Date().toLocaleDateString('en-GB', { 
+           day: 'numeric', 
+           month: 'long', 
+           year: 'numeric' 
+         }), 400, 320);
+      
+      // Task section
+      const taskY = 380;
+      
+      doc.moveTo(60, taskY - 10)
+         .lineTo(535, taskY - 10)
+         .stroke();
+      
+      doc.fontSize(12)
+         .font('Helvetica-Bold')
+         .text('TASK', 60, taskY)
+         .text('TOTAL', 450, taskY);
+      
+      // Task text based on invoice type
+      let taskText;
+      if (formData.invoiceType === 'retainer') {
+        taskText = `Monthly retainer for ${brandConfig.displayName} - ${formData.period}`;
+      } else {
+        taskText = formData.period; // This is the "Reward Claimed" text
+      }
+      
+      doc.fontSize(11)
+         .font('Helvetica')
+         .text(taskText, 60, taskY + 25)
+         .text(`£${netAmount}`, 450, taskY + 25);
+      
+      let currentY = taskY + 45;
+      
+      if (isVatRegistered) {
+        doc.text('VAT (20%)', 60, currentY)
+           .text(`£${vatAmount}`, 450, currentY);
+        currentY += 20;
+      }
+      
+      doc.moveTo(60, currentY + 10)
+         .lineTo(535, currentY + 10)
+         .stroke();
+      
+      doc.fontSize(14)
+         .font('Helvetica-Bold')
+         .text('TOTAL DUE', 350, currentY + 25)
+         .text(`£${totalAmount}`, 450, currentY + 25);
+      
+      // Payment information
+      const paymentY = currentY + 80;
+      doc.fontSize(12)
+         .font('Helvetica-Bold')
+         .text('PAYMENT INFORMATION:', 60, paymentY);
+      
+      doc.fontSize(11)
+         .font('Helvetica')
+         .text(`Account Name: ${formData.accountName || formData.name}`, 60, paymentY + 25)
+         .text(`Account Number: ${formData.accountNumber || ''}`, 60, paymentY + 45)
+         .text(`Sort Code: ${formData.sortCode || ''}`, 60, paymentY + 65);
+      
+      if (isVatRegistered && formData.vatNumber) {
+        doc.fontSize(10)
+           .font('Helvetica-Oblique')
+           .text(`VAT Number: ${formData.vatNumber}`, 60, paymentY + 100);
+      } else if (!isVatRegistered) {
+        doc.fontSize(10)
+           .font('Helvetica-Oblique')
+           .text('*Not VAT registered, VAT not applicable', 60, paymentY + 100);
+      }
+      
+      doc.rect(60, 750, 475, 20)
+         .fill('black');
+      
+      doc.end();
+      
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+exports.handler = async (event, context) => {
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      body: JSON.stringify({ error: 'Method not allowed' }),
+    };
+  }
+
+  try {
+    const result = await multipart.parse(event);
+    
+    let formData;
+    if (result.data) {
+      formData = JSON.parse(result.data);
+    } else if (result.fields && result.fields.data) {
+      formData = JSON.parse(result.fields.data);
+    } else {
+      formData = JSON.parse(event.body);
+    }
+
+    const submitterName = formData.name || 'New Submission';
+    const invoicePeriod = formData.period || new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    const invoiceTypeText = formData.invoiceType === 'retainer' ? 'Monthly Retainer' : 'Rewards Campaign';
+    const invoiceTitle = `${submitterName} - ${invoiceTypeText} - ${invoicePeriod}`;
+
+    // Generate and upload PDF
+    let invoiceInfo = null;
+    if (formData.invoiceMethod === 'generate') {
+      if ((formData.invoiceType === 'retainer' && formData.selectedTier) || 
+          (formData.invoiceType === 'rewards' && formData.rewardAmount)) {
+        try {
+          const pdfResult = await generateInvoicePDF(formData);
+          const cloudinaryResult = await uploadToCloudinary(pdfResult.buffer, pdfResult.filename, 'raw');
+          
+          invoiceInfo = {
+            ...pdfResult,
+            cloudinaryUrl: cloudinaryResult.url,
+            publicId: cloudinaryResult.publicId
+          };
+        } catch (pdfError) {
+          console.error('PDF generation failed:', pdfError);
         }
-    </script>
-</body>
-</html>
+      }
+    }
+
+    // Upload screenshots and invoice files
+    const files = result.files || [];
+    const screenshotInfo = [];
+    let uploadedInvoiceInfo = null;
+    
+    if (files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        try {
+          // Check if this is an uploaded invoice file
+          const isPDF = file.contentType === 'application/pdf' || file.filename.toLowerCase().endsWith('.pdf');
+          const isInvoiceField = file.fieldname === 'invoiceFileInput';
+          
+          if (isPDF || isInvoiceField) {
+            // This is an uploaded invoice
+            const timestamp = Date.now();
+            const invoiceFilename = `uploaded-invoice-${timestamp}-${file.filename}`;
+            
+            const cloudinaryResult = await uploadToCloudinary(file.content, invoiceFilename, 'raw');
+            
+            uploadedInvoiceInfo = {
+              filename: file.filename,
+              cloudinaryUrl: cloudinaryResult.url,
+              publicId: cloudinaryResult.publicId
+            };
+          } else {
+            // This is a screenshot
+            const timestamp = Date.now();
+            const screenshotFilename = `screenshot-${timestamp}-${i}-${file.filename}`;
+            
+            const cloudinaryResult = await uploadToCloudinary(file.content, screenshotFilename, 'image');
+            
+            screenshotInfo.push({
+              originalName: file.filename,
+              cloudinaryUrl: cloudinaryResult.url,
+              publicId: cloudinaryResult.publicId
+            });
+          }
+        } catch (uploadError) {
+          console.error(`Failed to upload file ${i + 1}:`, uploadError);
+        }
+      }
+    }
+
+    // Build properties
+    const properties = {
+      'Invoice Title': { title: [{ text: { content: invoiceTitle } }] },
+      'Status': { status: { name: 'Pending' } }
+    };
+
+    if (formData.email) properties['Email'] = { email: formData.email };
+    if (formData.name) properties['Name 1'] = { rich_text: [{ text: { content: formData.name } }] };
+    if (formData.discord) properties['Discord Username'] = { rich_text: [{ text: { content: formData.discord } }] };
+    if (formData.phone) properties['Phone'] = { phone_number: formData.phone };
+    
+    if (formData.submissionType) {
+      properties['Submission Type'] = { select: { name: formData.submissionType === 'individual' ? 'Individual' : 'Business' } };
+    }
+
+    properties['Brand 1'] = { select: { name: 'Dr Dent' } };
+
+    if (formData.invoiceType) {
+      properties['Invoice Type'] = { select: { name: formData.invoiceType === 'retainer' ? 'Monthly Retainer' : 'Rewards' } };
+    }
+
+    if (formData.period) properties['Period'] = { select: { name: formData.period } };
+
+    if (formData.selectedTier) {
+      const tierMap = { 'tier1': 'Tier 1', 'tier2': 'Tier 2', 'tier3': 'Tier 3', 'tier4': 'Tier 4' };
+      properties['Selected Tier'] = { select: { name: tierMap[formData.selectedTier] } };
+    }
+
+    if (formData.accounts && formData.accounts.length > 0) {
+      properties['TikTok Handle'] = { rich_text: [{ text: { content: formData.accounts.map(acc => acc.handle).join(', ') } }] };
+    }
+
+    if (formData.address) {
+      properties['Address'] = { rich_text: [{ text: { content: formData.address } }] };
+    }
+
+    if (formData.bankName || formData.accountName || formData.accountNumber || formData.sortCode) {
+      const bankDetails = [];
+      if (formData.bankName) bankDetails.push(`Bank: ${formData.bankName}`);
+      if (formData.accountName) bankDetails.push(`Account: ${formData.accountName}`);
+      if (formData.accountNumber) bankDetails.push(`Number: ${formData.accountNumber}`);
+      if (formData.sortCode) bankDetails.push(`Sort: ${formData.sortCode}`);
+      
+      properties['Bank Details'] = { rich_text: [{ text: { content: bankDetails.join(', ') } }] };
+    }
+
+    if (formData.submissionType === 'business' && formData.vatRegistered) {
+      properties['VAT Status'] = { select: { name: formData.vatRegistered === 'yes' ? 'VAT Registered' : 'Not VAT Registered' } };
+      
+      if (formData.vatNumber) {
+        properties['VAT Number'] = { rich_text: [{ text: { content: formData.vatNumber } }] };
+      }
+    }
+
+    properties['Submitted on'] = { date: { start: new Date().toISOString().split('T')[0] } };
+
+    // Add invoice file (either generated or uploaded)
+    if (invoiceInfo && invoiceInfo.cloudinaryUrl) {
+      // Generated invoice
+      properties['Invoice'] = {
+        files: [{
+          name: invoiceInfo.filename,
+          external: { url: invoiceInfo.cloudinaryUrl }
+        }]
+      };
+    } else if (uploadedInvoiceInfo && uploadedInvoiceInfo.cloudinaryUrl) {
+      // Uploaded invoice
+      properties['Invoice'] = {
+        files: [{
+          name: uploadedInvoiceInfo.filename,
+          external: { url: uploadedInvoiceInfo.cloudinaryUrl }
+        }]
+      };
+    }
+
+    // Add screenshots
+    if (screenshotInfo.length > 0) {
+      properties['Screenshots'] = { url: screenshotInfo[0].cloudinaryUrl };
+    }
+
+    const response = await notion.pages.create({
+      parent: { type: "database_id", database_id: DATABASE_ID },
+      properties: properties
+    });
+
+    return {
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+      },
+      body: JSON.stringify({
+        success: true,
+        message: 'Invoice submitted successfully',
+        notionPageId: response.id,
+        invoiceTitle: invoiceTitle,
+        invoiceGenerated: !!invoiceInfo,
+        invoiceUrl: invoiceInfo?.cloudinaryUrl || null,
+        screenshotsUploaded: screenshotInfo.length
+      })
+    };
+
+  } catch (error) {
+    console.error('Error processing submission:', error);
+    
+    return {
+      statusCode: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      },
+      body: JSON.stringify({
+        success: false,
+        error: error.message || 'Failed to submit invoice'
+      })
+    };
+  }
+};
