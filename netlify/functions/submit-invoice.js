@@ -291,9 +291,17 @@ exports.handler = async (event, context) => {
     let invoiceInfo = null;
     if (formData.invoiceMethod === 'generate' && formData.invoiceType === 'retainer' && formData.selectedTier) {
       console.log('Generating PDF invoice...');
+      console.log('Form data for PDF:', {
+        name: formData.name,
+        selectedTier: formData.selectedTier,
+        invoiceType: formData.invoiceType,
+        period: formData.period
+      });
+      
       try {
         const pdfResult = await generateInvoicePDF(formData);
-        console.log('PDF generated, uploading to Cloudinary...');
+        console.log('PDF generated successfully, size:', pdfResult.buffer.length);
+        console.log('PDF filename:', pdfResult.filename);
         
         const cloudinaryResult = await uploadToCloudinary(
           pdfResult.buffer,
@@ -307,11 +315,18 @@ exports.handler = async (event, context) => {
           publicId: cloudinaryResult.publicId
         };
         
-        console.log('Invoice uploaded to Cloudinary:', invoiceInfo.cloudinaryUrl);
+        console.log('Invoice uploaded to Cloudinary successfully:', invoiceInfo.cloudinaryUrl);
       } catch (pdfError) {
         console.error('PDF generation/upload failed:', pdfError);
-        // Continue without PDF
+        console.error('PDF error stack:', pdfError.stack);
+        // Continue without PDF but log the error
       }
+    } else {
+      console.log('PDF generation skipped. Conditions:', {
+        invoiceMethod: formData.invoiceMethod,
+        invoiceType: formData.invoiceType,
+        selectedTier: formData.selectedTier
+      });
     }
 
     // Upload screenshots to Cloudinary
