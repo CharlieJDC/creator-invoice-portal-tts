@@ -121,42 +121,50 @@ async function generateInvoicePDF(formData) {
         });
       });
       
-      // Brand header (top of invoice - Galactic Brands LTD)
-      doc.fontSize(16)
-         .font('Helvetica-Bold')
-         .text(brandConfig.billingDetails.companyName, 60, 60);
-      
-      doc.fontSize(10)
-         .font('Helvetica')
-         .text(brandConfig.billingDetails.address, 60, 85);
-      
       // Invoice title - large, centered, spaced
       doc.fontSize(36)
          .font('Helvetica')
          .text('INVOICE', 60, 140, { align: 'center', characterSpacing: 8 });
       
-      // Billed To section (left side) - Customer details
+      // Billed To section (left side) - Brand details (who is being billed)
       doc.fontSize(12)
          .font('Helvetica-Bold')
          .text('BILLED TO:', 60, 220);
       
       doc.fontSize(11)
          .font('Helvetica')
-         .text(formData.name, 60, 240);
+         .text(brandConfig.billingDetails.companyName, 60, 240);
+      
+      // Brand address
+      const brandAddressLines = brandConfig.billingDetails.address.split('\n');
+      let yPosition = 255;
+      brandAddressLines.forEach(line => {
+        doc.text(line.trim(), 60, yPosition);
+        yPosition += 15;
+      });
+      
+      // From section (right side) - Creator/Business details (who is billing)
+      doc.fontSize(12)
+         .font('Helvetica-Bold')
+         .text('FROM:', 400, 220);
+      
+      doc.fontSize(11)
+         .font('Helvetica')
+         .text(formData.name, 400, 240);
       
       if (formData.address) {
-        const addressLines = formData.address.split('\n');
-        let yPosition = 255;
-        addressLines.forEach(line => {
-          doc.text(line.trim(), 60, yPosition);
-          yPosition += 15;
+        const creatorAddressLines = formData.address.split('\n');
+        let creatorYPosition = 255;
+        creatorAddressLines.forEach(line => {
+          doc.text(line.trim(), 400, creatorYPosition);
+          creatorYPosition += 15;
         });
       }
       
-      // Date section (right side)
+      // Date section (below FROM)
       doc.fontSize(12)
          .font('Helvetica-Bold')
-         .text('DATE', 400, 220);
+         .text('DATE:', 400, creatorYPosition + 20);
       
       doc.fontSize(11)
          .font('Helvetica')
@@ -164,7 +172,7 @@ async function generateInvoicePDF(formData) {
            day: 'numeric', 
            month: 'long', 
            year: 'numeric' 
-         }), 400, 240);
+         }), 400, creatorYPosition + 40);
       
       // Task section with lines
       const taskY = 340;
