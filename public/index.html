@@ -1129,118 +1129,167 @@
         }
         
         function submitInvoice() {
+            console.log('=== SUBMIT INVOICE DEBUG START ===');
             console.log('submitInvoice called');
             
-            // Check if tier is selected for retainer type
-            const selectedTier = document.querySelector('input[name="tier"]:checked');
-            if (!selectedTier && document.getElementById('invoiceTypeSelect').value === 'retainer') {
-                alert('Please select a retainer tier before submitting.');
-                return;
-            }
-            
-            // Collect all form data
-            const formData = {
-                submissionType: submissionType,
-                invoiceMethod: invoiceMethod,
-                name: document.getElementById('nameInput').value,
-                email: document.getElementById('emailInput').value,
-                discord: document.getElementById('discordInput').value,
-                phone: document.getElementById('phoneInput').value,
-                address: document.getElementById('addressInput').value,
-                contact: document.getElementById('contactInput')?.value,
-                bankName: document.getElementById('bankInput')?.value,
-                accountName: document.getElementById('accountNameInput')?.value,
-                accountNumber: document.getElementById('accountNumberInput')?.value,
-                sortCode: document.getElementById('sortCodeInput')?.value,
-                brand: 'Dr Dent',
-                invoiceType: document.getElementById('invoiceTypeSelect').value,
-                period: document.getElementById('periodInput').value,
-                selectedTier: selectedTier ? selectedTier.value : null,
-                rewardAmount: document.getElementById('rewardAmountInput')?.value,
-                accounts: [],
-                screenshots: []
-            };
+            try {
+                // Check if tier is selected for retainer type
+                console.log('Checking tier selection...');
+                const selectedTier = document.querySelector('input[name="tier"]:checked');
+                const invoiceType = document.getElementById('invoiceTypeSelect').value;
+                console.log('Invoice type:', invoiceType);
+                console.log('Selected tier:', selectedTier ? selectedTier.value : 'none');
+                
+                if (!selectedTier && invoiceType === 'retainer') {
+                    alert('Please select a retainer tier before submitting.');
+                    return;
+                }
+                
+                // Check if reward amount is provided for rewards type
+                console.log('Checking reward amount...');
+                const rewardAmountInput = document.getElementById('rewardAmountInput');
+                console.log('Reward amount input exists:', !!rewardAmountInput);
+                console.log('Reward amount value:', rewardAmountInput ? rewardAmountInput.value : 'input not found');
+                
+                if (invoiceType === 'rewards' && 
+                    invoiceMethod === 'generate' && 
+                    (!rewardAmountInput || !rewardAmountInput.value)) {
+                    alert('Please enter a reward amount for rewards invoices.');
+                    return;
+                }
+                
+                console.log('Building form data...');
+                // Collect all form data
+                const formData = {
+                    submissionType: submissionType,
+                    invoiceMethod: invoiceMethod,
+                    name: document.getElementById('nameInput').value,
+                    email: document.getElementById('emailInput').value,
+                    discord: document.getElementById('discordInput').value,
+                    phone: document.getElementById('phoneInput').value,
+                    address: document.getElementById('addressInput').value,
+                    contact: document.getElementById('contactInput')?.value,
+                    bankName: document.getElementById('bankInput')?.value,
+                    accountName: document.getElementById('accountNameInput')?.value,
+                    accountNumber: document.getElementById('accountNumberInput')?.value,
+                    sortCode: document.getElementById('sortCodeInput')?.value,
+                    brand: 'Dr Dent',
+                    invoiceType: invoiceType,
+                    period: document.getElementById('periodInput').value,
+                    selectedTier: selectedTier ? selectedTier.value : null,
+                    rewardAmount: rewardAmountInput ? rewardAmountInput.value : null,
+                    accounts: [],
+                    screenshots: []
+                };
+                
+                console.log('Form data created:', formData);
 
-            // Add VAT information to formData
-            const vatStatus = document.querySelector('input[name="vatStatus"]:checked');
-            if (vatStatus) {
-                formData.vatRegistered = vatStatus.value;
-                formData.vatNumber = document.getElementById('vatNumberInput').value;
-            }
-            
-            // Collect account data and files
-            for (let i = 1; i <= accountCount; i++) {
-                const handleInput = document.getElementById(`handle${i}`);
-                if (handleInput && handleInput.value) {
-                    formData.accounts.push({
-                        handle: handleInput.value,
-                        fileCount: uploadedFiles[i] ? uploadedFiles[i].length : 0
-                    });
-                    
-                    if (uploadedFiles[i]) {
-                        uploadedFiles[i].forEach((file, index) => {
-                            formData.screenshots.push({
-                                account: i,
-                                handle: handleInput.value,
-                                fileName: file.name,
-                                fileSize: file.size,
-                                fileType: file.type,
-                                fileData: file
-                            });
+                // Add VAT information to formData
+                console.log('Adding VAT information...');
+                const vatStatus = document.querySelector('input[name="vatStatus"]:checked');
+                if (vatStatus) {
+                    formData.vatRegistered = vatStatus.value;
+                    formData.vatNumber = document.getElementById('vatNumberInput').value;
+                    console.log('VAT info added:', formData.vatRegistered, formData.vatNumber);
+                }
+                
+                console.log('Processing accounts and files...');
+                // Collect account data and files
+                for (let i = 1; i <= accountCount; i++) {
+                    const handleInput = document.getElementById(`handle${i}`);
+                    if (handleInput && handleInput.value) {
+                        formData.accounts.push({
+                            handle: handleInput.value,
+                            fileCount: uploadedFiles[i] ? uploadedFiles[i].length : 0
                         });
+                        
+                        if (uploadedFiles[i]) {
+                            uploadedFiles[i].forEach((file, index) => {
+                                formData.screenshots.push({
+                                    account: i,
+                                    handle: handleInput.value,
+                                    fileName: file.name,
+                                    fileSize: file.size,
+                                    fileType: file.type,
+                                    fileData: file
+                                });
+                            });
+                        }
                     }
                 }
-            }
-            
-            console.log('Form data collected:', formData);
-            
-            // Show loading state
-            const submitBtn = event.target;
-            const originalText = submitBtn.textContent;
-            submitBtn.textContent = 'Submitting to Notion...';
-            submitBtn.disabled = true;
-            
-            // Create FormData for file uploads
-            const formDataWithFiles = new FormData();
-            formDataWithFiles.append('data', JSON.stringify(formData));
-            
-            // Add all files to FormData
-            formData.screenshots.forEach((screenshot, index) => {
-                formDataWithFiles.append(`screenshot_${index}`, screenshot.fileData);
-            });
-            
-            console.log('Submitting to Netlify function...');
-            
-            // Submit to Netlify function
-            fetch('/.netlify/functions/submit-invoice', {
-                method: 'POST',
-                body: formDataWithFiles
-            })
-            .then(response => {
-                console.log('Response status:', response.status);
-                return response.json();
-            })
-            .then(result => {
-                console.log('Submission result:', result);
-                if (result.success) {
-                    // Update success email
-                    const email = document.getElementById('emailInput').value || 'john@example.com';
-                    document.getElementById('successEmail').textContent = email;
-                    goToStep(5);
+                
+                console.log('Accounts processed:', formData.accounts.length);
+                console.log('Screenshots processed:', formData.screenshots.length);
+                
+                // Show loading state
+                console.log('Setting loading state...');
+                const submitBtn = event.target;
+                const originalText = submitBtn.textContent;
+                submitBtn.textContent = 'Submitting to Notion...';
+                submitBtn.disabled = true;
+                
+                console.log('Creating FormData...');
+                // Create FormData for file uploads
+                const formDataWithFiles = new FormData();
+                formDataWithFiles.append('data', JSON.stringify(formData));
+                
+                // Add all screenshot files to FormData
+                console.log('Adding screenshot files...');
+                formData.screenshots.forEach((screenshot, index) => {
+                    formDataWithFiles.append(`screenshot_${index}`, screenshot.fileData);
+                });
+                
+                // Add uploaded invoice file if present
+                console.log('Checking for uploaded invoice file...');
+                const invoiceFileInput = document.getElementById('invoiceFileInput');
+                if (invoiceFileInput && invoiceFileInput.files && invoiceFileInput.files.length > 0) {
+                    formDataWithFiles.append('invoiceFileInput', invoiceFileInput.files[0]);
+                    console.log('Added invoice file to form data:', invoiceFileInput.files[0].name);
                 } else {
-                    alert('Error submitting invoice: ' + result.error);
-                    console.error('Submission error:', result);
+                    console.log('No invoice file to upload');
                 }
-            })
-            .catch(error => {
-                console.error('Network error:', error);
-                alert('Error submitting invoice. Please check the console for details.');
-            })
-            .finally(() => {
-                // Reset button
-                submitBtn.textContent = originalText;
-                submitBtn.disabled = false;
-            });
+                
+                console.log('Submitting to Netlify function...');
+                
+                // Submit to Netlify function
+                fetch('/.netlify/functions/submit-invoice', {
+                    method: 'POST',
+                    body: formDataWithFiles
+                })
+                .then(response => {
+                    console.log('Response received, status:', response.status);
+                    return response.json();
+                })
+                .then(result => {
+                    console.log('Submission result:', result);
+                    if (result.success) {
+                        // Update success email
+                        const email = document.getElementById('emailInput').value || 'john@example.com';
+                        document.getElementById('successEmail').textContent = email;
+                        goToStep(5);
+                    } else {
+                        console.error('Submission failed:', result);
+                        alert('Error submitting invoice: ' + result.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Network error:', error);
+                    alert('Error submitting invoice. Please check the console for details.');
+                })
+                .finally(() => {
+                    console.log('Resetting button...');
+                    // Reset button
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                });
+                
+                console.log('=== SUBMIT INVOICE DEBUG END ===');
+            } catch (error) {
+                console.error('=== CRITICAL ERROR IN SUBMIT FUNCTION ===');
+                console.error('Error:', error);
+                console.error('Stack:', error.stack);
+                alert('Critical error: ' + error.message);
+            }
         }
         
         function goToStep(step) {
