@@ -85,12 +85,19 @@ async function generateInvoicePDF(formData) {
   return new Promise((resolve, reject) => {
     try {
       const brandConfig = getBrandConfig('dr-dent');
-      const tierAmount = brandConfig.retainerTiers[formData.selectedTier]?.amount || 450;
+      
+      // Calculate amount based on invoice type
+      let netAmount;
+      if (formData.invoiceType === 'retainer') {
+        netAmount = brandConfig.retainerTiers[formData.selectedTier]?.amount || 450;
+      } else {
+        // For rewards, use the provided amount
+        netAmount = parseFloat(formData.rewardAmount) || 0;
+      }
       
       // VAT calculation
       const isVatRegistered = formData.submissionType === 'business' && formData.vatRegistered === 'yes';
       const vatRate = 0.20;
-      const netAmount = tierAmount;
       const vatAmount = isVatRegistered ? Math.round(netAmount * vatRate * 100) / 100 : 0;
       const totalAmount = netAmount + vatAmount;
       
@@ -172,9 +179,13 @@ async function generateInvoicePDF(formData) {
          .text('TASK', 60, taskY)
          .text('TOTAL', 450, taskY);
       
-      const taskText = formData.invoiceType === 'retainer' ? 
-        `Monthly retainer for ${brandConfig.displayName} - ${formData.period}` : 
-        `${formData.period} campaign`;
+      // Task text based on invoice type
+      let taskText;
+      if (formData.invoiceType === 'retainer') {
+        taskText = `Monthly retainer for ${brandConfig.displayName} - ${formData.period}`;
+      } else {
+        taskText = formData.period; // This is the "Reward Claimed" text
+      }
       
       doc.fontSize(11)
          .font('Helvetica')
@@ -258,18 +269,23 @@ exports.handler = async (event, context) => {
 
     // Generate and upload PDF
     let invoiceInfo = null;
-    if (formData.invoiceMethod === 'generate' && formData.invoiceType === 'retainer' && formData.selectedTier) {
-      try {
-        const pdfResult = await generateInvoicePDF(formData);
-        const cloudinaryResult = await uploadToCloudinary(pdfResult.buffer, pdfResult.filename, 'raw');
-        
-        invoiceInfo = {
-          ...pdfResult,
-          cloudinaryUrl: cloudinaryResult.url,
-          publicId: cloudinaryResult.publicId
-        };
-      } catch (pdfError) {
-        console.error('PDF generation failed:', pdfError);
+    if (formData.invoiceMethod === 'generate') {
+      // For retainers: need selectedTier
+      // For rewards: need rewardAmount
+      if ((formData.invoiceType === 'retainer' && formData.selectedTier) || 
+          (formData.invoiceType === 'rewards' && formData.rewardAmount)) {
+        try {
+          const pdfResult = await generateInvoicePDF(formData);
+          const cloudinaryResult = await uploadToCloudinary(pdfResult.buffer, pdfResult.filename, 'raw');
+          
+          invoiceInfo = {
+            ...pdfResult,
+            cloudinaryUrl: cloudinaryResult.url,
+            publicId: cloudinaryResult.publicId
+          };
+        } catch (pdfError) {
+          console.error('PDF generation failed:', pdfError);
+        }
       }
     }
 
