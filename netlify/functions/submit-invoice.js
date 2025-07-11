@@ -46,15 +46,21 @@ function getBrandConfig(brandKey) {
 async function uploadToCloudinary(buffer, filename, resourceType = 'auto') {
   try {
     return new Promise((resolve, reject) => {
-      // For PDFs, we need to use 'raw' resource type and ensure proper URL format
+      // For PDFs, use specific settings to ensure proper upload
       const uploadOptions = {
         resource_type: resourceType,
-        public_id: `tmmb-invoices/${filename.replace(/\.[^/.]+$/, "")}`, // Remove extension
-        use_filename: true,
-        unique_filename: false, // Keep consistent naming
-        folder: 'tmmb-invoices',
-        format: resourceType === 'raw' ? 'pdf' : undefined // Explicitly set format for PDFs
+        public_id: `tmmb-invoices/${Date.now()}-${filename.replace(/\.[^/.]+$/, "")}`, // Add timestamp to avoid conflicts
+        use_filename: false, // Don't use original filename to avoid issues
+        unique_filename: false, // Don't add random chars
+        folder: 'tmmb-invoices'
       };
+
+      // For raw files (PDFs), don't specify format - let Cloudinary handle it
+      if (resourceType === 'raw') {
+        uploadOptions.flags = 'attachment'; // Force download instead of preview
+      }
+
+      console.log('Cloudinary upload options:', uploadOptions);
 
       const uploadStream = cloudinary.uploader.upload_stream(
         uploadOptions,
@@ -63,17 +69,16 @@ async function uploadToCloudinary(buffer, filename, resourceType = 'auto') {
             console.error('Cloudinary upload error:', error);
             reject(error);
           } else {
-            console.log('Cloudinary upload success:', result.secure_url);
-            
-            // For PDFs, ensure the URL includes the .pdf extension
-            let finalUrl = result.secure_url;
-            if (resourceType === 'raw' && !finalUrl.includes('.pdf')) {
-              finalUrl = `${result.secure_url}.pdf`;
-            }
+            console.log('Cloudinary upload result:', {
+              url: result.secure_url,
+              public_id: result.public_id,
+              resource_type: result.resource_type,
+              format: result.format
+            });
             
             resolve({
               publicId: result.public_id,
-              url: finalUrl,
+              url: result.secure_url,
               filename: result.original_filename || filename
             });
           }
@@ -275,7 +280,7 @@ exports.handler = async (event, context) => {
         const cloudinaryResult = await uploadToCloudinary(
           pdfResult.buffer,
           pdfResult.filename,
-          'raw' // Use 'raw' for PDFs
+          'raw' // Use 'raw' for PDFs to preserve the file exactly
         );
         
         invoiceInfo = {
@@ -407,21 +412,6 @@ exports.handler = async (event, context) => {
           name: invoiceInfo.filename,
           external: {
             url: invoiceInfo.cloudinaryUrl
-          }
-        }]
-      };
-      
-      // Also add invoice details as backup info
-      const brandConfig = getBrandConfig('dr-dent');
-      const tierAmount = brandConfig.retainerTiers[formData.selectedTier]?.amount || 450;
-      const isVatRegistered = formData.submissionType === 'business' && formData.vatRegistered === 'yes';
-      const vatAmount = isVatRegistered ? Math.round(tierAmount * 0.20 * 100) / 100 : 0;
-      const totalAmount = tierAmount + vatAmount;
-      
-      properties['Invoice Details'] = {
-        rich_text: [{
-          text: {
-            content: `📄 Invoice: ${invoiceInfo.filename}\n💰 Amount: £${tierAmount}${isVatRegistered ? ` + £${vatAmount} VAT = £${totalAmount}` : ''}\n🔗 URL: ${invoiceInfo.cloudinaryUrl}\n🔢 Invoice #: ${invoiceInfo.invoiceNumber}`
           }
         }]
       };
