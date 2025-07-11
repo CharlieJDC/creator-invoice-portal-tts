@@ -289,26 +289,45 @@ exports.handler = async (event, context) => {
       }
     }
 
-    // Upload screenshots
+    // Upload screenshots and invoice files
     const files = result.files || [];
     const screenshotInfo = [];
+    let uploadedInvoiceInfo = null;
     
     if (files.length > 0) {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         try {
-          const timestamp = Date.now();
-          const screenshotFilename = `screenshot-${timestamp}-${i}-${file.filename}`;
-          
-          const cloudinaryResult = await uploadToCloudinary(file.content, screenshotFilename, 'image');
-          
-          screenshotInfo.push({
-            originalName: file.filename,
-            cloudinaryUrl: cloudinaryResult.url,
-            publicId: cloudinaryResult.publicId
-          });
+          // Check if this is an uploaded invoice file (PDF)
+          if (file.fieldname === 'invoiceFileInput' || file.filename.toLowerCase().endsWith('.pdf')) {
+            // This is an uploaded invoice
+            const timestamp = Date.now();
+            const invoiceFilename = `uploaded-invoice-${timestamp}-${file.filename}`;
+            
+            const cloudinaryResult = await uploadToCloudinary(file.content, invoiceFilename, 'raw');
+            
+            uploadedInvoiceInfo = {
+              filename: file.filename,
+              cloudinaryUrl: cloudinaryResult.url,
+              publicId: cloudinaryResult.publicId
+            };
+            
+            console.log('Uploaded invoice processed:', uploadedInvoiceInfo.cloudinaryUrl);
+          } else {
+            // This is a screenshot
+            const timestamp = Date.now();
+            const screenshotFilename = `screenshot-${timestamp}-${i}-${file.filename}`;
+            
+            const cloudinaryResult = await uploadToCloudinary(file.content, screenshotFilename, 'image');
+            
+            screenshotInfo.push({
+              originalName: file.filename,
+              cloudinaryUrl: cloudinaryResult.url,
+              publicId: cloudinaryResult.publicId
+            });
+          }
         } catch (uploadError) {
-          console.error(`Failed to upload screenshot ${i + 1}:`, uploadError);
+          console.error(`Failed to upload file ${i + 1}:`, uploadError);
         }
       }
     }
@@ -369,12 +388,21 @@ exports.handler = async (event, context) => {
 
     properties['Submitted on'] = { date: { start: new Date().toISOString().split('T')[0] } };
 
-    // Add invoice file
+    // Add invoice file (either generated or uploaded)
     if (invoiceInfo && invoiceInfo.cloudinaryUrl) {
+      // Generated invoice
       properties['Invoice'] = {
         files: [{
           name: invoiceInfo.filename,
           external: { url: invoiceInfo.cloudinaryUrl }
+        }]
+      };
+    } else if (uploadedInvoiceInfo && uploadedInvoiceInfo.cloudinaryUrl) {
+      // Uploaded invoice
+      properties['Invoice'] = {
+        files: [{
+          name: uploadedInvoiceInfo.filename,
+          external: { url: uploadedInvoiceInfo.cloudinaryUrl }
         }]
       };
     }
