@@ -92,7 +92,7 @@ async function generateInvoicePDF(formData) {
       const totalAmount = netAmount + vatAmount;
       
       const invoiceNumber = `DR-DENT-${Date.now()}`;
-      const doc = new PDFDocument({ margin: 50 });
+      const doc = new PDFDocument({ margin: 60, size: 'A4' });
       
       let buffers = [];
       doc.on('data', buffers.push.bind(buffers));
@@ -105,59 +105,113 @@ async function generateInvoicePDF(formData) {
         });
       });
       
-      // Brand header
-      doc.fontSize(16).text(brandConfig.billingDetails.companyName, 50, 50);
-      doc.fontSize(10).text(brandConfig.billingDetails.address, 50, 75);
+      // Invoice title - large, centered, spaced
+      doc.fontSize(36)
+         .text('INVOICE', 60, 120, { align: 'center', characterSpacing: 8 });
       
-      // Invoice title
-      doc.fontSize(32).text('INVOICE', 50, 150, { align: 'center' });
+      // Billed To section (left side)
+      doc.fontSize(12)
+         .font('Helvetica-Bold')
+         .text('BILLED TO:', 60, 200);
       
-      // Invoice details
-      doc.fontSize(12).text('BILLED TO:', 50, 220);
-      doc.fontSize(10).text(formData.name, 50, 240);
+      doc.fontSize(11)
+         .font('Helvetica')
+         .text(formData.name, 60, 220);
+      
       if (formData.address) {
-        doc.text(formData.address, 50, 255);
+        const addressLines = formData.address.split('\n');
+        let yPosition = 235;
+        addressLines.forEach(line => {
+          doc.text(line.trim(), 60, yPosition);
+          yPosition += 15;
+        });
       }
       
-      doc.fontSize(12).text('DATE:', 400, 220);
-      doc.fontSize(10).text(new Date().toLocaleDateString('en-GB'), 400, 240);
+      // Date section (right side)
+      doc.fontSize(12)
+         .font('Helvetica-Bold')
+         .text('DATE', 400, 200);
       
-      doc.fontSize(12).text('INVOICE #:', 400, 260);
-      doc.fontSize(10).text(invoiceNumber, 400, 280);
+      doc.fontSize(11)
+         .font('Helvetica')
+         .text(new Date().toLocaleDateString('en-GB', { 
+           day: 'numeric', 
+           month: 'long', 
+           year: 'numeric' 
+         }), 400, 220);
       
-      // Task section
+      // Task section with lines
       const taskY = 320;
-      doc.fontSize(12).text('TASK', 50, taskY);
-      doc.text('TOTAL', 450, taskY);
+      
+      // Draw line above task section
+      doc.moveTo(60, taskY - 10)
+         .lineTo(535, taskY - 10)
+         .stroke();
+      
+      doc.fontSize(12)
+         .font('Helvetica-Bold')
+         .text('TASK', 60, taskY)
+         .text('TOTAL', 450, taskY);
       
       const taskText = formData.invoiceType === 'retainer' ? 
         `Monthly retainer for ${brandConfig.displayName} - ${formData.period}` : 
         `${formData.period} campaign`;
       
-      doc.fontSize(10).text(taskText, 50, taskY + 20);
-      doc.text(`£${netAmount}`, 450, taskY + 20);
+      doc.fontSize(11)
+         .font('Helvetica')
+         .text(taskText, 60, taskY + 25)
+         .text(`£${netAmount}`, 450, taskY + 25);
+      
+      let currentY = taskY + 45;
       
       if (isVatRegistered) {
-        doc.text('VAT (20%)', 50, taskY + 40);
-        doc.text(`£${vatAmount}`, 450, taskY + 40);
+        doc.text('VAT (20%)', 60, currentY)
+           .text(`£${vatAmount}`, 450, currentY);
+        currentY += 20;
       }
       
-      // Total
-      doc.fontSize(14).text('TOTAL DUE', 350, taskY + 70);
-      doc.text(`£${totalAmount}`, 450, taskY + 70);
+      // Draw line above total
+      doc.moveTo(60, currentY + 10)
+         .lineTo(535, currentY + 10)
+         .stroke();
       
-      // Payment info
-      const paymentY = taskY + 120;
-      doc.fontSize(12).text('PAYMENT INFORMATION:', 50, paymentY);
-      doc.fontSize(10).text(`Account Name: ${formData.accountName || formData.name}`, 50, paymentY + 20);
-      doc.text(`Account Number: ${formData.accountNumber || ''}`, 50, paymentY + 35);
-      doc.text(`Sort Code: ${formData.sortCode || ''}`, 50, paymentY + 50);
+      // Total section
+      doc.fontSize(14)
+         .font('Helvetica-Bold')
+         .text('TOTAL DUE', 350, currentY + 25)
+         .text(`£${totalAmount}`, 450, currentY + 25);
       
+      // Payment information section
+      const paymentY = currentY + 80;
+      doc.fontSize(12)
+         .font('Helvetica-Bold')
+         .text('PAYMENT INFORMATION:', 60, paymentY);
+      
+      doc.fontSize(11)
+         .font('Helvetica')
+         .text(`Account Name:`, 60, paymentY + 25)
+         .text(`${formData.accountName || formData.name}`, 200, paymentY + 25);
+      
+      doc.text(`Account Number:`, 60, paymentY + 45)
+         .text(`${formData.accountNumber || ''}`, 200, paymentY + 45);
+      
+      doc.text(`Sort Code:`, 60, paymentY + 65)
+         .text(`${formData.sortCode || ''}`, 200, paymentY + 65);
+      
+      // VAT information
       if (isVatRegistered && formData.vatNumber) {
-        doc.text(`VAT Number: ${formData.vatNumber}`, 50, paymentY + 70);
+        doc.fontSize(10)
+           .font('Helvetica-Oblique')
+           .text(`VAT Number: ${formData.vatNumber}`, 60, paymentY + 100);
       } else if (!isVatRegistered) {
-        doc.text('*Not VAT registered, VAT not applicable', 50, paymentY + 70);
+        doc.fontSize(10)
+           .font('Helvetica-Oblique')
+           .text('*Not VAT registered, VAT not applicable', 60, paymentY + 100);
       }
+      
+      // Footer with black bar (like your template)
+      doc.rect(60, 750, 475, 20)
+         .fill('black');
       
       doc.end();
       
@@ -335,11 +389,16 @@ exports.handler = async (event, context) => {
 
     // Add invoice file if generated and uploaded to Cloudinary
     if (invoiceInfo && invoiceInfo.cloudinaryUrl) {
+      // Force PDF content type by adding .pdf extension to URL if needed
+      const pdfUrl = invoiceInfo.cloudinaryUrl.includes('.pdf') ? 
+        invoiceInfo.cloudinaryUrl : 
+        `${invoiceInfo.cloudinaryUrl}.pdf`;
+        
       properties['Invoice'] = {
         files: [{
           name: invoiceInfo.filename,
           external: {
-            url: invoiceInfo.cloudinaryUrl
+            url: pdfUrl
           }
         }]
       };
@@ -347,13 +406,26 @@ exports.handler = async (event, context) => {
 
     // Add screenshots if uploaded to Cloudinary
     if (screenshotInfo.length > 0) {
-      const screenshotText = screenshotInfo.map((screenshot, index) => 
-        `📷 Screenshot ${index + 1}: ${screenshot.originalName}\n🔗 URL: ${screenshot.cloudinaryUrl}\n`
-      ).join('\n');
-      
+      // Create proper URL format for Notion
       properties['Screenshots'] = {
-        rich_text: [{ text: { content: screenshotText } }]
+        url: screenshotInfo[0].cloudinaryUrl  // Use the first screenshot URL
       };
+      
+      // If multiple screenshots, add them as rich text with clickable links
+      if (screenshotInfo.length > 1) {
+        const screenshotLinks = screenshotInfo.map((screenshot, index) => 
+          `📷 Screenshot ${index + 1}: ${screenshot.cloudinaryUrl}`
+        ).join('\n');
+        
+        properties['Screenshot Links'] = {
+          rich_text: [{ 
+            text: { 
+              content: screenshotLinks,
+              link: null 
+            }
+          }]
+        };
+      }
     }
 
     // Create Notion page
