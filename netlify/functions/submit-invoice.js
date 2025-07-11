@@ -294,13 +294,21 @@ exports.handler = async (event, context) => {
     const screenshotInfo = [];
     let uploadedInvoiceInfo = null;
     
+    console.log('Processing files:', files.length);
+    
     if (files.length > 0) {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        console.log('Processing file:', file.filename, 'fieldname:', file.fieldname, 'contentType:', file.contentType);
+        
         try {
-          // Check if this is an uploaded invoice file (PDF)
-          if (file.fieldname === 'invoiceFileInput' || file.filename.toLowerCase().endsWith('.pdf')) {
+          // Check if this is an uploaded invoice file
+          const isPDF = file.contentType === 'application/pdf' || file.filename.toLowerCase().endsWith('.pdf');
+          const isInvoiceField = file.fieldname === 'invoiceFileInput';
+          
+          if (isPDF || isInvoiceField) {
             // This is an uploaded invoice
+            console.log('Processing as uploaded invoice');
             const timestamp = Date.now();
             const invoiceFilename = `uploaded-invoice-${timestamp}-${file.filename}`;
             
@@ -315,6 +323,7 @@ exports.handler = async (event, context) => {
             console.log('Uploaded invoice processed:', uploadedInvoiceInfo.cloudinaryUrl);
           } else {
             // This is a screenshot
+            console.log('Processing as screenshot');
             const timestamp = Date.now();
             const screenshotFilename = `screenshot-${timestamp}-${i}-${file.filename}`;
             
