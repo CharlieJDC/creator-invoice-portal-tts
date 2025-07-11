@@ -46,23 +46,34 @@ function getBrandConfig(brandKey) {
 async function uploadToCloudinary(buffer, filename, resourceType = 'auto') {
   try {
     return new Promise((resolve, reject) => {
+      // For PDFs, we need to use 'raw' resource type and ensure proper URL format
+      const uploadOptions = {
+        resource_type: resourceType,
+        public_id: `tmmb-invoices/${filename.replace(/\.[^/.]+$/, "")}`, // Remove extension
+        use_filename: true,
+        unique_filename: false, // Keep consistent naming
+        folder: 'tmmb-invoices',
+        format: resourceType === 'raw' ? 'pdf' : undefined // Explicitly set format for PDFs
+      };
+
       const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          resource_type: resourceType,
-          public_id: `tmmb-invoices/${filename.replace(/\.[^/.]+$/, "")}`, // Remove extension, Cloudinary adds it
-          use_filename: true,
-          unique_filename: true,
-          folder: 'tmmb-invoices'
-        },
+        uploadOptions,
         (error, result) => {
           if (error) {
             console.error('Cloudinary upload error:', error);
             reject(error);
           } else {
             console.log('Cloudinary upload success:', result.secure_url);
+            
+            // For PDFs, ensure the URL includes the .pdf extension
+            let finalUrl = result.secure_url;
+            if (resourceType === 'raw' && !finalUrl.includes('.pdf')) {
+              finalUrl = `${result.secure_url}.pdf`;
+            }
+            
             resolve({
               publicId: result.public_id,
-              url: result.secure_url,
+              url: finalUrl,
               filename: result.original_filename || filename
             });
           }
@@ -389,16 +400,28 @@ exports.handler = async (event, context) => {
 
     // Add invoice file if generated and uploaded to Cloudinary
     if (invoiceInfo && invoiceInfo.cloudinaryUrl) {
-      // Force PDF content type by adding .pdf extension to URL if needed
-      const pdfUrl = invoiceInfo.cloudinaryUrl.includes('.pdf') ? 
-        invoiceInfo.cloudinaryUrl : 
-        `${invoiceInfo.cloudinaryUrl}.pdf`;
-        
+      console.log('Adding invoice to Notion with URL:', invoiceInfo.cloudinaryUrl);
+      
       properties['Invoice'] = {
         files: [{
           name: invoiceInfo.filename,
           external: {
-            url: pdfUrl
+            url: invoiceInfo.cloudinaryUrl
+          }
+        }]
+      };
+      
+      // Also add invoice details as backup info
+      const brandConfig = getBrandConfig('dr-dent');
+      const tierAmount = brandConfig.retainerTiers[formData.selectedTier]?.amount || 450;
+      const isVatRegistered = formData.submissionType === 'business' && formData.vatRegistered === 'yes';
+      const vatAmount = isVatRegistered ? Math.round(tierAmount * 0.20 * 100) / 100 : 0;
+      const totalAmount = tierAmount + vatAmount;
+      
+      properties['Invoice Details'] = {
+        rich_text: [{
+          text: {
+            content: `📄 Invoice: ${invoiceInfo.filename}\n💰 Amount: £${tierAmount}${isVatRegistered ? ` + £${vatAmount} VAT = £${totalAmount}` : ''}\n🔗 URL: ${invoiceInfo.cloudinaryUrl}\n🔢 Invoice #: ${invoiceInfo.invoiceNumber}`
           }
         }]
       };
