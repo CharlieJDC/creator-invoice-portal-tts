@@ -2,6 +2,7 @@
 const { Client } = require('@notionhq/client');
 const multipart = require('lambda-multipart-parser');
 const PDFDocument = require('pdfkit');
+const cloudinary = require('cloudinary').v2;
 
 // Initialize Notion client
 const notion = new Client({
@@ -9,6 +10,9 @@ const notion = new Client({
 });
 
 const DATABASE_ID = process.env.NOTION_DATABASE_ID;
+
+// Initialize Cloudinary (uses CLOUDINARY_URL environment variable automatically)
+// No additional configuration needed if CLOUDINARY_URL is set
 
 // Brand configurations
 const BRAND_CONFIGS = {
@@ -36,6 +40,41 @@ GB`,
 
 function getBrandConfig(brandKey) {
   return BRAND_CONFIGS[brandKey] || BRAND_CONFIGS['dr-dent'];
+}
+
+// Upload file to Cloudinary and return public URL
+async function uploadToCloudinary(buffer, filename, resourceType = 'auto') {
+  try {
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          resource_type: resourceType,
+          public_id: `tmmb-invoices/${filename.replace(/\.[^/.]+$/, "")}`, // Remove extension, Cloudinary adds it
+          use_filename: true,
+          unique_filename: true,
+          folder: 'tmmb-invoices'
+        },
+        (error, result) => {
+          if (error) {
+            console.error('Cloudinary upload error:', error);
+            reject(error);
+          } else {
+            console.log('Cloudinary upload success:', result.secure_url);
+            resolve({
+              publicId: result.public_id,
+              url: result.secure_url,
+              filename: result.original_filename || filename
+            });
+          }
+        }
+      );
+
+      uploadStream.end(buffer);
+    });
+  } catch (error) {
+    console.error('Error uploading to Cloudinary:', error);
+    throw error;
+  }
 }
 
 // Generate PDF invoice using PDFKit
@@ -128,13 +167,6 @@ async function generateInvoicePDF(formData) {
   });
 }
 
-// Convert file to base64 data URL for temporary storage
-function fileToDataURL(file) {
-  const base64 = file.content.toString('base64');
-  const mimeType = file.contentType || 'image/png';
-  return `data:${mimeType};base64,${base64}`;
-}
-
 exports.handler = async (event, context) => {
   if (event.httpMethod !== 'POST') {
     return {
@@ -167,16 +199,62 @@ exports.handler = async (event, context) => {
     const invoiceTypeText = formData.invoiceType === 'retainer' ? 'Monthly Retainer' : 'Rewards Campaign';
     const invoiceTitle = `${submitterName} - ${invoiceTypeText} - ${invoicePeriod}`;
 
-    // Generate PDF invoice if method is 'generate'
+    // Generate and upload PDF invoice if requested
     let invoiceInfo = null;
     if (formData.invoiceMethod === 'generate' && formData.invoiceType === 'retainer' && formData.selectedTier) {
       console.log('Generating PDF invoice...');
       try {
-        invoiceInfo = await generateInvoicePDF(formData);
-        console.log('PDF generated successfully:', invoiceInfo.filename);
+        const pdfResult = await generateInvoicePDF(formData);
+        console.log('PDF generated, uploading to Cloudinary...');
+        
+        const cloudinaryResult = await uploadToCloudinary(
+          pdfResult.buffer,
+          pdfResult.filename,
+          'raw' // Use 'raw' for PDFs
+        );
+        
+        invoiceInfo = {
+          ...pdfResult,
+          cloudinaryUrl: cloudinaryResult.url,
+          publicId: cloudinaryResult.publicId
+        };
+        
+        console.log('Invoice uploaded to Cloudinary:', invoiceInfo.cloudinaryUrl);
       } catch (pdfError) {
-        console.error('PDF generation failed:', pdfError);
-        // Continue without PDF - will note in Notion
+        console.error('PDF generation/upload failed:', pdfError);
+        // Continue without PDF
+      }
+    }
+
+    // Upload screenshots to Cloudinary
+    const files = result.files || [];
+    const screenshotInfo = [];
+    
+    if (files.length > 0) {
+      console.log(`Uploading ${files.length} screenshots to Cloudinary...`);
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        try {
+          const timestamp = Date.now();
+          const screenshotFilename = `screenshot-${timestamp}-${i}-${file.filename}`;
+          
+          const cloudinaryResult = await uploadToCloudinary(
+            file.content,
+            screenshotFilename,
+            'image'
+          );
+          
+          screenshotInfo.push({
+            originalName: file.filename,
+            cloudinaryUrl: cloudinaryResult.url,
+            publicId: cloudinaryResult.publicId
+          });
+          
+          console.log(`Screenshot ${i + 1} uploaded:`, cloudinaryResult.url);
+        } catch (uploadError) {
+          console.error(`Failed to upload screenshot ${i + 1}:`, uploadError);
+        }
       }
     }
 
@@ -255,35 +333,26 @@ exports.handler = async (event, context) => {
       date: { start: new Date().toISOString().split('T')[0] }
     };
 
-    // Handle screenshot files
-    const files = result.files || [];
-    if (files.length > 0) {
-      console.log(`Processing ${files.length} screenshot files...`);
-      
-      // For now, we'll create data URLs as temporary links
-      // In production, you'd upload to S3/Cloudinary and get real URLs
-      const screenshotLinks = files.map((file, index) => {
-        const dataURL = fileToDataURL(file);
-        return `Screenshot ${index + 1}: ${file.filename}\nData URL: ${dataURL.substring(0, 100)}... (truncated for display)\n`;
-      }).join('\n');
-      
-      properties['Screenshots'] = {
-        rich_text: [{ text: { content: `${files.length} screenshots uploaded:\n\n${screenshotLinks}` } }]
+    // Add invoice file if generated and uploaded to Cloudinary
+    if (invoiceInfo && invoiceInfo.cloudinaryUrl) {
+      properties['Invoice'] = {
+        files: [{
+          name: invoiceInfo.filename,
+          external: {
+            url: invoiceInfo.cloudinaryUrl
+          }
+        }]
       };
     }
 
-    // Add invoice file if generated
-    if (invoiceInfo) {
-      // Convert PDF to base64 for temporary storage
-      const pdfBase64 = invoiceInfo.buffer.toString('base64');
-      const pdfDataURL = `data:application/pdf;base64,${pdfBase64}`;
+    // Add screenshots if uploaded to Cloudinary
+    if (screenshotInfo.length > 0) {
+      const screenshotText = screenshotInfo.map((screenshot, index) => 
+        `📷 Screenshot ${index + 1}: ${screenshot.originalName}\n🔗 URL: ${screenshot.cloudinaryUrl}\n`
+      ).join('\n');
       
-      properties['Invoice'] = {
-        rich_text: [{
-          text: {
-            content: `PDF Invoice Generated: ${invoiceInfo.filename}\nDownload: ${pdfDataURL.substring(0, 100)}... (base64 PDF data)`
-          }
-        }]
+      properties['Screenshots'] = {
+        rich_text: [{ text: { content: screenshotText } }]
       };
     }
 
@@ -310,8 +379,9 @@ exports.handler = async (event, context) => {
         notionPageId: response.id,
         invoiceTitle: invoiceTitle,
         invoiceGenerated: !!invoiceInfo,
-        filesUploaded: files.length,
-        invoiceDownload: invoiceInfo ? `data:application/pdf;base64,${invoiceInfo.buffer.toString('base64')}` : null
+        invoiceUrl: invoiceInfo?.cloudinaryUrl || null,
+        screenshotsUploaded: screenshotInfo.length,
+        screenshotUrls: screenshotInfo.map(s => s.cloudinaryUrl)
       })
     };
 
