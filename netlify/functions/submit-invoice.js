@@ -63,10 +63,13 @@ GB`,
       phone: '+44 xxx xxx xxxx'
     },
     retainerTiers: {
-      'tier1': { name: 'Tier 1', gmvRange: '<£10k', amount: 450 },
-      'tier2': { name: 'Tier 2', gmvRange: '£10k - £25k', amount: 600 },
-      'tier3': { name: 'Tier 3', gmvRange: '£25k - £50k', amount: 850 },
-      'tier4': { name: 'Tier 4', gmvRange: '£50k+', amount: 1000 }
+      'tier1': { name: '1st Tier', gmvRange: '5-10k', amount: 450, videos: 15 },
+      'tier2': { name: '2nd Tier', gmvRange: '£10k - £25k', amount: 600, videos: 15 },
+      'tier3': { name: '3rd Tier', gmvRange: '£25k - £50k', amount: 850, videos: 10 },
+      'tier4': { name: '4th Tier', gmvRange: '£50k+', amount: 1000, videos: 10 },
+      'tier0-1': { name: 'Entry Tier 1', gmvRange: '5-10k overall', amount: 300, videos: 20 },
+      'tier0-2': { name: 'Entry Tier 2', gmvRange: '10k-20k overall', amount: 300, videos: 15 },
+      'tier0-3': { name: 'Entry Tier 3', gmvRange: '20k+ overall', amount: 400, videos: 15 }
     }
   }
 };
@@ -546,8 +549,21 @@ exports.handler = async (event, context) => {
     if (formData.period) properties['Period'] = { select: { name: formData.period } };
 
     if (formData.selectedTier) {
-      const tierMap = { 'tier1': 'Tier 1', 'tier2': 'Tier 2', 'tier3': 'Tier 3', 'tier4': 'Tier 4' };
+      const tierMap = {
+        'tier1': 'Tier 1',
+        'tier2': 'Tier 2',
+        'tier3': 'Tier 3',
+        'tier4': 'Tier 4',
+        'tier0-1': 'Entry Tier 1',
+        'tier0-2': 'Entry Tier 2',
+        'tier0-3': 'Entry Tier 3'
+      };
       properties['Selected Tier'] = { select: { name: tierMap[formData.selectedTier] } };
+    }
+
+    // Add first time retainer checkbox
+    if (formData.firstTimeRetainer !== undefined) {
+      properties['First Time Retainer'] = { checkbox: formData.firstTimeRetainer };
     }
 
     if (formData.accounts && formData.accounts.length > 0) {

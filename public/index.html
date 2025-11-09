@@ -726,50 +726,131 @@
                             </select>
                         </div>
                         
-                        <div class="form-group full-width">
-                            <label id="periodLabel">Period (e.g., June 2025)</label>
-                            <input type="text" id="periodInput" placeholder="e.g., June 2025">
+                        <div class="form-group">
+                            <label>Month</label>
+                            <select id="monthSelect">
+                                <option value="January">January</option>
+                                <option value="February">February</option>
+                                <option value="March">March</option>
+                                <option value="April">April</option>
+                                <option value="May">May</option>
+                                <option value="June">June</option>
+                                <option value="July">July</option>
+                                <option value="August">August</option>
+                                <option value="September">September</option>
+                                <option value="October">October</option>
+                                <option value="November">November</option>
+                                <option value="December">December</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Year</label>
+                            <select id="yearSelect">
+                                <option value="2024">2024</option>
+                                <option value="2025" selected>2025</option>
+                                <option value="2026">2026</option>
+                            </select>
                         </div>
                     </div>
                 </div>
 
                 <div class="tier-display" id="tierDisplay">
                     <h3 style="color: #dc2626; margin-bottom: 15px;">Select Your Retainer Tier</h3>
-                    <p style="color: #6b7280; margin-bottom: 15px;">Choose the tier that matches your expected GMV. This will be verified against your uploaded screenshots.</p>
-                    <div class="tier-grid">
-                        <div class="tier-item">
-                            <input type="radio" name="tier" value="tier1" id="tier1" style="margin-bottom: 10px;">
-                            <label for="tier1" style="cursor: pointer;">
-                                <div class="tier-name">Tier 1</div>
-                                <div class="tier-range">&lt;£10k GMV</div>
-                                <div class="tier-amount">£450</div>
-                            </label>
+
+                    <!-- First Time Retainer Checkbox -->
+                    <div style="margin-bottom: 20px; padding: 15px; background: #fef3c7; border-radius: 8px; border: 1px solid #fbbf24;">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" id="firstTimeRetainer" onchange="toggleRetainerTiers()" style="margin-right: 10px; width: 18px; height: 18px;">
+                            <span style="font-weight: 600; color: #92400e;">First time retainer (Entry-level tiers)</span>
+                        </label>
+                    </div>
+
+                    <!-- Standard Retainer Tiers -->
+                    <div id="standardTiers">
+                        <p style="color: #6b7280; margin-bottom: 15px; font-weight: 600;">Choose the tier that matches your GMV for Dr Dent in the last month</p>
+                        <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
+                            <h4 style="color: #1e40af; margin-bottom: 10px;">Standard Retainers</h4>
+                            <p style="font-size: 13px; color: #4b5563; margin-bottom: 5px;">Based on performance with Dr Dent in the previous month</p>
                         </div>
-                        <div class="tier-item">
-                            <input type="radio" name="tier" value="tier2" id="tier2" style="margin-bottom: 10px;">
-                            <label for="tier2" style="cursor: pointer;">
-                                <div class="tier-name">Tier 2</div>
-                                <div class="tier-range">£10k - £25k</div>
-                                <div class="tier-amount">£600</div>
-                            </label>
-                        </div>
-                        <div class="tier-item">
-                            <input type="radio" name="tier" value="tier3" id="tier3" style="margin-bottom: 10px;">
-                            <label for="tier3" style="cursor: pointer;">
-                                <div class="tier-name">Tier 3</div>
-                                <div class="tier-range">£25k - £50k</div>
-                                <div class="tier-amount">£850</div>
-                            </label>
-                        </div>
-                        <div class="tier-item">
-                            <input type="radio" name="tier" value="tier4" id="tier4" style="margin-bottom: 10px;">
-                            <label for="tier4" style="cursor: pointer;">
-                                <div class="tier-name">Tier 4</div>
-                                <div class="tier-range">£50k+</div>
-                                <div class="tier-amount">£1,000</div>
-                            </label>
+                        <div class="tier-grid">
+                            <div class="tier-item">
+                                <input type="radio" name="tier" value="tier1" id="tier1" style="margin-bottom: 10px;">
+                                <label for="tier1" style="cursor: pointer;">
+                                    <div class="tier-name">1st Tier</div>
+                                    <div class="tier-range">5-10k GMV</div>
+                                    <div class="tier-amount">£450</div>
+                                    <div style="font-size: 12px; color: #6b7280; margin-top: 5px;">15 videos</div>
+                                </label>
+                            </div>
+                            <div class="tier-item">
+                                <input type="radio" name="tier" value="tier2" id="tier2" style="margin-bottom: 10px;">
+                                <label for="tier2" style="cursor: pointer;">
+                                    <div class="tier-name">2nd Tier</div>
+                                    <div class="tier-range">10k - 25k</div>
+                                    <div class="tier-amount">£600</div>
+                                    <div style="font-size: 12px; color: #6b7280; margin-top: 5px;">15 videos</div>
+                                </label>
+                            </div>
+                            <div class="tier-item">
+                                <input type="radio" name="tier" value="tier3" id="tier3" style="margin-bottom: 10px;">
+                                <label for="tier3" style="cursor: pointer;">
+                                    <div class="tier-name">3rd Tier</div>
+                                    <div class="tier-range">25k - 50k</div>
+                                    <div class="tier-amount">£850</div>
+                                    <div style="font-size: 12px; color: #6b7280; margin-top: 5px;">10 videos</div>
+                                </label>
+                            </div>
+                            <div class="tier-item">
+                                <input type="radio" name="tier" value="tier4" id="tier4" style="margin-bottom: 10px;">
+                                <label for="tier4" style="cursor: pointer;">
+                                    <div class="tier-name">4th Tier</div>
+                                    <div class="tier-range">50k+</div>
+                                    <div class="tier-amount">£1,000</div>
+                                    <div style="font-size: 12px; color: #6b7280; margin-top: 5px;">10 videos + Star Group</div>
+                                </label>
+                            </div>
                         </div>
                     </div>
+
+                    <!-- Entry Level Tiers -->
+                    <div id="entryLevelTiers" style="display: none;">
+                        <p style="color: #6b7280; margin-bottom: 15px; font-weight: 600;">Choose the tier that matches your overall GMV in the last 30 days</p>
+                        <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+                            <h4 style="color: #92400e; margin-bottom: 10px;">Entry-Level Retainers</h4>
+                            <p style="font-size: 13px; color: #78350f; margin-bottom: 5px;"><strong>Requirement:</strong> &lt;5k GMV for Dr Dent (but must have done minimum 5k overall GMV in last 30 days)</p>
+                        </div>
+                        <div class="tier-grid">
+                            <div class="tier-item">
+                                <input type="radio" name="tier" value="tier0-1" id="tier0-1" style="margin-bottom: 10px;">
+                                <label for="tier0-1" style="cursor: pointer;">
+                                    <div class="tier-name">Tier 1</div>
+                                    <div class="tier-range">5-10k overall GMV</div>
+                                    <div class="tier-amount">£300</div>
+                                    <div style="font-size: 12px; color: #6b7280; margin-top: 5px;">20 videos</div>
+                                </label>
+                            </div>
+                            <div class="tier-item">
+                                <input type="radio" name="tier" value="tier0-2" id="tier0-2" style="margin-bottom: 10px;">
+                                <label for="tier0-2" style="cursor: pointer;">
+                                    <div class="tier-name">Tier 2</div>
+                                    <div class="tier-range">10k-20k overall GMV</div>
+                                    <div class="tier-amount">£300</div>
+                                    <div style="font-size: 12px; color: #6b7280; margin-top: 5px;">15 videos</div>
+                                </label>
+                            </div>
+                            <div class="tier-item">
+                                <input type="radio" name="tier" value="tier0-3" id="tier0-3" style="margin-bottom: 10px;">
+                                <label for="tier0-3" style="cursor: pointer;">
+                                    <div class="tier-name">Tier 3</div>
+                                    <div class="tier-range">20k+ overall GMV</div>
+                                    <div class="tier-amount">£400</div>
+                                    <div style="font-size: 12px; color: #6b7280; margin-top: 5px;">15 videos</div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="alert alert-warning" style="margin-top: 15px;">
                         <strong>Note:</strong> If your uploaded screenshots don't match the selected tier, TMMB will adjust the invoice accordingly.
                     </div>
@@ -1110,19 +1191,13 @@
         function updateInvoiceType() {
             console.log('updateInvoiceType called');
             const select = document.getElementById('invoiceTypeSelect');
-            const periodLabel = document.getElementById('periodLabel');
-            const periodInput = document.getElementById('periodInput');
             const tierDisplay = document.getElementById('tierDisplay');
             const rewardAmountDisplay = document.getElementById('rewardAmountDisplay');
-            
+
             if (select.value === 'retainer') {
-                periodLabel.textContent = 'Period (e.g., June 2025)';
-                periodInput.placeholder = 'e.g., June 2025';
                 tierDisplay.style.display = 'block';
                 rewardAmountDisplay.style.display = 'none';
             } else {
-                periodLabel.textContent = 'Reward Claimed';
-                periodInput.placeholder = 'june campaign 5k GMV reward';
                 tierDisplay.style.display = 'none';
                 rewardAmountDisplay.style.display = 'block';
             }
@@ -1175,8 +1250,9 @@
                     sortCode: document.getElementById('sortCodeInput')?.value,
                     brand: 'Dr Dent',
                     invoiceType: invoiceType,
-                    period: document.getElementById('periodInput').value,
+                    period: `${document.getElementById('monthSelect').value} ${document.getElementById('yearSelect').value}`,
                     selectedTier: selectedTier ? selectedTier.value : null,
+                    firstTimeRetainer: document.getElementById('firstTimeRetainer')?.checked || false,
                     rewardAmount: rewardAmountInput ? rewardAmountInput.value : null,
                     accounts: [],
                     screenshots: []
@@ -1301,6 +1377,24 @@
             }
         }
         
+        function toggleRetainerTiers() {
+            const firstTimeCheckbox = document.getElementById('firstTimeRetainer');
+            const standardTiers = document.getElementById('standardTiers');
+            const entryLevelTiers = document.getElementById('entryLevelTiers');
+
+            // Clear all tier selections
+            const allTierRadios = document.querySelectorAll('input[name="tier"]');
+            allTierRadios.forEach(radio => radio.checked = false);
+
+            if (firstTimeCheckbox.checked) {
+                standardTiers.style.display = 'none';
+                entryLevelTiers.style.display = 'block';
+            } else {
+                standardTiers.style.display = 'block';
+                entryLevelTiers.style.display = 'none';
+            }
+        }
+
         function goToStep(step) {
             console.log('goToStep called with:', step);
             
@@ -1328,9 +1422,11 @@
                 const name = document.getElementById('nameInput').value || 'John Smith';
                 const email = document.getElementById('emailInput').value || 'john@example.com';
                 const discord = document.getElementById('discordInput').value || '@username';
-                const period = document.getElementById('periodInput').value || 'June 2025';
+                const month = document.getElementById('monthSelect').value;
+                const year = document.getElementById('yearSelect').value;
+                const period = `${month} ${year}`;
                 const invoiceType = document.getElementById('invoiceTypeSelect').value;
-                
+
                 document.getElementById('reviewName').textContent = name;
                 document.getElementById('reviewEmail').textContent = email;
                 document.getElementById('reviewDiscord').textContent = discord;
@@ -1358,10 +1454,13 @@
                 const selectedTier = document.querySelector('input[name="tier"]:checked');
                 if (selectedTier) {
                     const tierLabels = {
-                        'tier1': 'Tier 1 (£450)',
-                        'tier2': 'Tier 2 (£600)', 
-                        'tier3': 'Tier 3 (£850)',
-                        'tier4': 'Tier 4 (£1,000)'
+                        'tier1': 'Tier 1 (£450 - 15 videos)',
+                        'tier2': 'Tier 2 (£600 - 15 videos)',
+                        'tier3': 'Tier 3 (£850 - 10 videos)',
+                        'tier4': 'Tier 4 (£1,000 - 10 videos)',
+                        'tier0-1': 'Entry Tier 1 (£300 - 20 videos)',
+                        'tier0-2': 'Entry Tier 2 (£300 - 15 videos)',
+                        'tier0-3': 'Entry Tier 3 (£400 - 15 videos)'
                     };
                     document.getElementById('reviewTier').textContent = tierLabels[selectedTier.value];
                 } else {
@@ -1385,6 +1484,17 @@
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM loaded, initializing app');
+
+            // Set current month as default
+            const now = new Date();
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                               'July', 'August', 'September', 'October', 'November', 'December'];
+            const currentMonth = monthNames[now.getMonth()];
+            const monthSelect = document.getElementById('monthSelect');
+            if (monthSelect) {
+                monthSelect.value = currentMonth;
+            }
+
             goToStep(0);
         });
         
