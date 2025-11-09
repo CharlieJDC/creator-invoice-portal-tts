@@ -1249,10 +1249,19 @@
                     console.log('No invoice file to upload');
                 }
                 
-                console.log('Submitting to Netlify function...');
-                
-                // Submit to Netlify function
-                fetch('/.netlify/functions/submit-invoice', {
+                console.log('Submitting to server...');
+
+                // Detect environment and use appropriate endpoint
+                // Netlify deployment: use /.netlify/functions/submit-invoice
+                // Local/Express server: use /api/submit-invoice
+                const isNetlify = window.location.hostname.includes('netlify') ||
+                                  window.location.hostname.includes('tmmbagency.com');
+                const endpoint = isNetlify ? '/.netlify/functions/submit-invoice' : '/api/submit-invoice';
+
+                console.log('Using endpoint:', endpoint);
+
+                // Submit to server
+                fetch(endpoint, {
                     method: 'POST',
                     body: formDataWithFiles
                 })

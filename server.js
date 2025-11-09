@@ -7,7 +7,50 @@ const path = require('path');
 const puppeteer = require('puppeteer');
 const handlebars = require('handlebars');
 const fs = require('fs').promises;
+const cloudinary = require('cloudinary').v2;
+const { google } = require('googleapis');
+const stream = require('stream');
 require('dotenv').config();
+
+// Configure Cloudinary
+// CLOUDINARY_URL format: cloudinary://API_KEY:API_SECRET@CLOUD_NAME
+if (process.env.CLOUDINARY_URL) {
+  cloudinary.config({
+    cloudinary_url: process.env.CLOUDINARY_URL
+  });
+  console.log('Cloudinary configured successfully');
+} else {
+  console.warn('Warning: CLOUDINARY_URL not set. File uploads will fail.');
+}
+
+// Configure Google Drive
+let drive = null;
+let googleDriveAuth = null;
+
+async function initializeGoogleDrive() {
+  try {
+    if (!process.env.GOOGLE_DRIVE_CREDENTIALS_PATH || !process.env.GOOGLE_DRIVE_FOLDER_ID) {
+      console.warn('Warning: Google Drive not configured. Set GOOGLE_DRIVE_CREDENTIALS_PATH and GOOGLE_DRIVE_FOLDER_ID');
+      return;
+    }
+
+    const credentialsPath = path.resolve(process.env.GOOGLE_DRIVE_CREDENTIALS_PATH);
+    const credentials = JSON.parse(await fs.readFile(credentialsPath, 'utf8'));
+
+    googleDriveAuth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: ['https://www.googleapis.com/auth/drive.file']
+    });
+
+    drive = google.drive({ version: 'v3', auth: googleDriveAuth });
+    console.log('✅ Google Drive configured successfully');
+    console.log('   Service Account:', credentials.client_email);
+    console.log('   Root Folder ID:', process.env.GOOGLE_DRIVE_FOLDER_ID);
+  } catch (error) {
+    console.error('Error initializing Google Drive:', error.message);
+    console.warn('Google Drive uploads will not be available');
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -90,6 +133,162 @@ function getBrandConfig(brandKey) {
   return BRAND_CONFIGS[brandKey] || BRAND_CONFIGS['dr-dent']; // Default to Dr Dent
 }
 
+// Upload file to Cloudinary and return public URL
+async function uploadToCloudinary(buffer, filename, resourceType = 'auto') {
+  try {
+    return new Promise((resolve, reject) => {
+      const uploadOptions = {
+        resource_type: resourceType,
+        public_id: `tmmb-invoices/${Date.now()}-${filename.replace(/\.[^/.]+$/, "")}`,
+        use_filename: false,
+        unique_filename: false,
+        folder: 'tmmb-invoices'
+      };
+
+      if (resourceType === 'raw') {
+        uploadOptions.flags = 'attachment';
+      }
+
+      const uploadStream = cloudinary.uploader.upload_stream(
+        uploadOptions,
+        (error, result) => {
+          if (error) {
+            console.error('Cloudinary upload error:', error);
+            reject(error);
+          } else {
+            console.log('Cloudinary upload success:', result.secure_url);
+            resolve({
+              publicId: result.public_id,
+              url: result.secure_url,
+              filename: result.original_filename || filename
+            });
+          }
+        }
+      );
+
+      uploadStream.end(buffer);
+    });
+  } catch (error) {
+    console.error('Error uploading to Cloudinary:', error);
+    throw error;
+  }
+}
+
+// Google Drive Helper Functions
+
+// Find or create a folder in Google Drive
+async function findOrCreateFolder(folderName, parentFolderId) {
+  if (!drive) {
+    throw new Error('Google Drive not initialized');
+  }
+
+  try {
+    const isSharedDrive = process.env.GOOGLE_DRIVE_IS_SHARED_DRIVE === 'true';
+
+    // Search for existing folder
+    const response = await drive.files.list({
+      q: `name='${folderName}' and '${parentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields: 'files(id, name)',
+      spaces: 'drive',
+      supportsAllDrives: isSharedDrive,
+      includeItemsFromAllDrives: isSharedDrive
+    });
+
+    if (response.data.files && response.data.files.length > 0) {
+      console.log(`  Found existing folder: ${folderName}`);
+      return response.data.files[0].id;
+    }
+
+    // Create new folder if it doesn't exist
+    console.log(`  Creating new folder: ${folderName}`);
+    const folderMetadata = {
+      name: folderName,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [parentFolderId]
+    };
+
+    const folder = await drive.files.create({
+      resource: folderMetadata,
+      fields: 'id, name',
+      supportsAllDrives: isSharedDrive
+    });
+
+    return folder.data.id;
+  } catch (error) {
+    console.error(`Error finding/creating folder ${folderName}:`, error.message);
+    throw error;
+  }
+}
+
+// Upload file to Google Drive with organized folder structure
+async function uploadToGoogleDrive(buffer, filename, brand, month, type, mimeType = 'application/pdf') {
+  if (!drive) {
+    throw new Error('Google Drive not initialized. Check your credentials.');
+  }
+
+  try {
+    const rootFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+
+    console.log(`📁 Organizing file in Google Drive:`);
+    console.log(`   Brand: ${brand}, Month: ${month}, Type: ${type}`);
+
+    // Create folder structure: Invoices / Brand / Month / Type
+    const invoicesFolderId = await findOrCreateFolder('Invoices', rootFolderId);
+    const brandFolderId = await findOrCreateFolder(brand, invoicesFolderId);
+    const monthFolderId = await findOrCreateFolder(month, brandFolderId);
+    const typeFolderId = await findOrCreateFolder(type, monthFolderId);
+
+    // Upload file
+    console.log(`   Uploading: ${filename}`);
+
+    const bufferStream = new stream.PassThrough();
+    bufferStream.end(buffer);
+
+    const fileMetadata = {
+      name: filename,
+      parents: [typeFolderId]
+    };
+
+    const media = {
+      mimeType: mimeType,
+      body: bufferStream
+    };
+
+    const isSharedDrive = process.env.GOOGLE_DRIVE_IS_SHARED_DRIVE === 'true';
+
+    const file = await drive.files.create({
+      resource: fileMetadata,
+      media: media,
+      fields: 'id, name, webViewLink, webContentLink',
+      supportsAllDrives: isSharedDrive
+    });
+
+    // Make file accessible with link
+    await drive.permissions.create({
+      fileId: file.data.id,
+      requestBody: {
+        role: 'reader',
+        type: 'anyone'
+      },
+      supportsAllDrives: isSharedDrive
+    });
+
+    const fileUrl = file.data.webViewLink;
+    console.log(`✅ Uploaded to Google Drive: ${fileUrl}`);
+
+    return {
+      fileId: file.data.id,
+      url: fileUrl,
+      downloadUrl: file.data.webContentLink,
+      filename: filename,
+      folder: `${brand}/${month}/${type}`
+    };
+  } catch (error) {
+    console.error('Error uploading to Google Drive:', error.message);
+    throw error;
+  }
+}
+
 // Test database connection on startup
 async function testDB() {
   try {
@@ -105,7 +304,13 @@ async function testDB() {
   }
 }
 
-testDB();
+// Initialize services on startup
+async function initializeServices() {
+  await testDB();
+  await initializeGoogleDrive();
+}
+
+initializeServices();
 
 // Middleware
 app.use(cors());
@@ -425,12 +630,82 @@ app.post('/api/submit-invoice', upload.any(), async (req, res) => {
     const formData = JSON.parse(req.body.data);
     const files = req.files || [];
 
+    // Prepare folder organization variables
+    const brandName = formData.brand || 'Dr Dent';
+    const brandDisplayName = brandName.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()); // "dr-dent" -> "Dr Dent"
+
+    // Format month as "YYYY-MM MonthName" (e.g., "2025-11 November")
+    const now = new Date();
+    const monthName = now.toLocaleDateString('en-US', { month: 'long' });
+    const monthFolder = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')} ${monthName}`;
+
+    const invoiceType = formData.invoiceType === 'retainer' ? 'Retainers' : 'Rewards';
+
     // Generate invoice if method is 'generate'
     let invoiceInfo = null;
     if (formData.invoiceMethod === 'generate') {
       console.log('Generating invoice...');
-      invoiceInfo = await generateInvoice(formData);
-      console.log('Invoice generated:', invoiceInfo.filename);
+      const generatedInvoice = await generateInvoice(formData);
+      console.log('Invoice generated:', generatedInvoice.filename);
+
+      // Upload generated PDF to Google Drive
+      try {
+        const driveResult = await uploadToGoogleDrive(
+          generatedInvoice.pdfBuffer,
+          generatedInvoice.filename,
+          brandDisplayName,
+          monthFolder,
+          invoiceType,
+          'application/pdf'
+        );
+
+        invoiceInfo = {
+          ...generatedInvoice,
+          driveUrl: driveResult.url,
+          driveFileId: driveResult.fileId,
+          driveFolder: driveResult.folder
+        };
+
+        console.log('Invoice uploaded to Google Drive:', driveResult.url);
+      } catch (uploadError) {
+        console.error('Failed to upload invoice to Google Drive:', uploadError);
+        // Fall back to local file if Google Drive fails
+        invoiceInfo = generatedInvoice;
+      }
+    }
+
+    // Handle uploaded invoice files
+    let uploadedInvoiceInfo = null;
+    if (formData.invoiceMethod === 'upload') {
+      const invoiceFile = files.find(f => f.fieldname === 'invoiceFileInput');
+      if (invoiceFile) {
+        console.log('Processing uploaded invoice:', invoiceFile.originalname);
+
+        try {
+          const timestamp = Date.now();
+          const invoiceFilename = `${formData.name.replace(/\s+/g, '-')}_${invoiceType}_${timestamp}.pdf`;
+
+          const driveResult = await uploadToGoogleDrive(
+            invoiceFile.buffer,
+            invoiceFilename,
+            brandDisplayName,
+            monthFolder,
+            invoiceType,
+            'application/pdf'
+          );
+
+          uploadedInvoiceInfo = {
+            filename: invoiceFile.originalname,
+            driveUrl: driveResult.url,
+            driveFileId: driveResult.fileId,
+            driveFolder: driveResult.folder
+          };
+
+          console.log('Uploaded invoice to Google Drive:', driveResult.url);
+        } catch (uploadError) {
+          console.error('Failed to upload invoice to Google Drive:', uploadError);
+        }
+      }
     }
 
     // Build properties object, excluding undefined values
@@ -590,66 +865,97 @@ app.post('/api/submit-invoice', upload.any(), async (req, res) => {
       }
     }
 
-    properties['Due Date'] = {
-      date: {
-        start: new Date().toISOString().split('T')[0], // Today's date
-      },
-    };
+    // Note: Using 'Date Paid' property instead of 'Due Date' since that's what exists in the database
+    // Commenting out for now as this should be set when payment is made, not on submission
+    // properties['Date Paid'] = {
+    //   date: {
+    //     start: new Date().toISOString().split('T')[0],
+    //   },
+    // };
 
-    // Handle screenshot files - save locally and add to Notion
+    // Handle screenshot files - upload to Google Drive and add to Notion
     if (files.length > 0) {
       console.log(`Received ${files.length} screenshot files`);
-      
-      // Create screenshots directory
-      await fs.mkdir(path.join(__dirname, 'screenshots'), { recursive: true });
-      
+
       const screenshotUrls = [];
-      
+
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const filename = `screenshot-${Date.now()}-${i}-${file.originalname}`;
-        const filepath = path.join(__dirname, 'screenshots', filename);
-        
-        // Save file
-        await fs.writeFile(filepath, file.buffer);
-        
-        // Create URL for Notion - use hardcoded port 3001
-        screenshotUrls.push({
-          name: file.originalname,
-          external: {
-            url: `http://localhost:3001/screenshots/${filename}`
-          }
-        });
-        
-        console.log(`Saved screenshot: ${filename}`);
+        const screenshotFilename = `${formData.name.replace(/\s+/g, '-')}_screenshot_${i + 1}_${Date.now()}.${file.originalname.split('.').pop()}`;
+
+        try {
+          // Upload to Google Drive in Screenshots subfolder
+          const driveResult = await uploadToGoogleDrive(
+            file.buffer,
+            screenshotFilename,
+            brandDisplayName,
+            monthFolder,
+            `${invoiceType}/Screenshots`, // Nested folder: Retainers/Screenshots or Rewards/Screenshots
+            file.mimetype || 'image/png'
+          );
+
+          screenshotUrls.push({
+            name: file.originalname,
+            url: driveResult.url,
+            fileId: driveResult.fileId,
+            folder: driveResult.folder
+          });
+
+          console.log(`Uploaded screenshot to Google Drive: ${driveResult.url}`);
+        } catch (uploadError) {
+          console.error(`Failed to upload screenshot ${i + 1}:`, uploadError);
+        }
       }
-      
-      // Add screenshots to Notion properties as text links (localhost not accessible from Notion)
+
+      // Add screenshots to Notion properties as URL (single URL format)
       if (screenshotUrls.length > 0) {
-        console.log('Adding screenshots to Notion as text:', screenshotUrls);
-        // Store as clickable text links since Notion can't access localhost
+        console.log('Adding screenshots to Notion as URL:', screenshotUrls);
+        // Notion URL field only accepts a single URL, so we'll use the first screenshot
         properties['Screenshots'] = {
-          rich_text: [
-            {
-              text: {
-                content: screenshotUrls.map((url, index) => 
-                  `Screenshot ${index + 1}: ${url.name}\nURL: ${url.external.url}`
-                ).join('\n\n')
-              }
-            }
-          ]
+          url: screenshotUrls[0].url
         };
+
+        // If there are multiple screenshots, log a warning
+        if (screenshotUrls.length > 1) {
+          console.warn(`Warning: ${screenshotUrls.length} screenshots uploaded to Google Drive, but only the first one will be stored in Notion URL field`);
+          console.log('All uploaded screenshot URLs:', screenshotUrls.map(s => s.url));
+        }
       }
     }
 
-    // Add invoice information if generated
-    if (invoiceInfo) {
+    // Add invoice file (either generated or uploaded)
+    if (invoiceInfo && invoiceInfo.driveUrl) {
+      // Generated invoice with Google Drive URL
       properties['Invoice'] = {
         files: [
           {
             name: invoiceInfo.filename,
             external: {
-              url: `http://localhost:3001/invoices/${invoiceInfo.filename}`
+              url: invoiceInfo.driveUrl
+            }
+          }
+        ]
+      };
+    } else if (uploadedInvoiceInfo && uploadedInvoiceInfo.driveUrl) {
+      // Uploaded invoice with Google Drive URL
+      properties['Invoice'] = {
+        files: [
+          {
+            name: uploadedInvoiceInfo.filename,
+            external: {
+              url: uploadedInvoiceInfo.driveUrl
+            }
+          }
+        ]
+      };
+    } else if (invoiceInfo) {
+      // Fallback to local URL (shouldn't happen with Google Drive)
+      properties['Invoice'] = {
+        files: [
+          {
+            name: invoiceInfo.filename,
+            external: {
+              url: `http://localhost:${PORT}/invoices/${invoiceInfo.filename}`
             }
           }
         ]
