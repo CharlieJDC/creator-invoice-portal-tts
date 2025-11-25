@@ -12,8 +12,9 @@ const notion = new Client({
 
 const DATABASE_ID = process.env.NOTION_DATABASE_ID;
 
-// Configure Google Drive
+// Configure Google Drive and Google Sheets
 let drive = null;
+let sheets = null;
 let googleDriveAuth = null;
 
 async function initializeGoogleDrive() {
@@ -37,11 +38,16 @@ async function initializeGoogleDrive() {
 
     googleDriveAuth = new google.auth.GoogleAuth({
       credentials,
-      scopes: ['https://www.googleapis.com/auth/drive.file']
+      scopes: [
+        'https://www.googleapis.com/auth/drive.file',
+        'https://www.googleapis.com/auth/spreadsheets'
+      ]
     });
 
     drive = google.drive({ version: 'v3', auth: googleDriveAuth });
+    sheets = google.sheets({ version: 'v4', auth: googleDriveAuth });
     console.log('✅ Google Drive configured successfully');
+    console.log('✅ Google Sheets configured successfully');
   } catch (error) {
     console.error('Error initializing Google Drive:', error.message);
   }
@@ -177,6 +183,269 @@ async function uploadToGoogleDrive(buffer, filename, brand, month, type, mimeTyp
     };
   } catch (error) {
     console.error('Error uploading to Google Drive:', error.message);
+    throw error;
+  }
+}
+
+// Google Sheets Helper Functions
+
+// Find or create a monthly spreadsheet for invoice responses
+async function findOrCreateMonthlySpreadsheet(brand, month, year, invoiceType) {
+  if (!sheets || !drive) {
+    throw new Error('Google Sheets/Drive not initialized');
+  }
+
+  const spreadsheetName = `${brand} ${invoiceType} Invoice Submission ${month} ${year} (Responses)`;
+  const rootFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+  const isSharedDrive = process.env.GOOGLE_DRIVE_IS_SHARED_DRIVE === 'true';
+
+  try {
+    // Search for existing spreadsheet in the folder
+    const searchQuery = `name='${spreadsheetName}' and '${rootFolderId}' in parents and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`;
+
+    const searchResponse = await drive.files.list({
+      q: searchQuery,
+      fields: 'files(id, name)',
+      spaces: 'drive',
+      supportsAllDrives: isSharedDrive,
+      includeItemsFromAllDrives: isSharedDrive
+    });
+
+    if (searchResponse.data.files && searchResponse.data.files.length > 0) {
+      console.log(`📊 Found existing spreadsheet: ${spreadsheetName}`);
+      return searchResponse.data.files[0].id;
+    }
+
+    // Create new spreadsheet directly in the target folder using Drive API
+    console.log(`📊 Creating new spreadsheet: ${spreadsheetName}`);
+
+    const fileMetadata = {
+      name: spreadsheetName,
+      mimeType: 'application/vnd.google-apps.spreadsheet',
+      parents: [rootFolderId]
+    };
+
+    const createdFile = await drive.files.create({
+      resource: fileMetadata,
+      fields: 'id',
+      supportsAllDrives: isSharedDrive
+    });
+
+    const spreadsheetId = createdFile.data.id;
+    console.log(`   Created spreadsheet with ID: ${spreadsheetId}`);
+
+    // Rename the default sheet from "Sheet1" to "Responses"
+    const spreadsheetInfo = await sheets.spreadsheets.get({
+      spreadsheetId: spreadsheetId
+    });
+    const defaultSheetId = spreadsheetInfo.data.sheets[0].properties.sheetId;
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetId,
+      resource: {
+        requests: [
+          {
+            updateSheetProperties: {
+              properties: {
+                sheetId: defaultSheetId,
+                title: 'Responses'
+              },
+              fields: 'title'
+            }
+          }
+        ]
+      }
+    });
+
+    // Add headers to the spreadsheet
+    const headers = [
+      'Timestamp',
+      'Name',
+      'Email',
+      'Discord',
+      'TikTok Account(s)',
+      'GMV Generated (Previous Period)',
+      'No. of Videos Posted During Period',
+      'Retainer Tier',
+      'Invoice Amount',
+      'Invoice PDF',
+      'Screenshots',
+      'Submission Type',
+      'VAT Status',
+      'Address',
+      'Bank Details'
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: spreadsheetId,
+      range: 'Responses!A1:O1',
+      valueInputOption: 'RAW',
+      resource: {
+        values: [headers]
+      }
+    });
+
+    // Format header row (bold)
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: spreadsheetId,
+      resource: {
+        requests: [
+          {
+            repeatCell: {
+              range: {
+                sheetId: defaultSheetId,
+                startRowIndex: 0,
+                endRowIndex: 1
+              },
+              cell: {
+                userEnteredFormat: {
+                  backgroundColor: { red: 0.2, green: 0.2, blue: 0.2 },
+                  textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } }
+                }
+              },
+              fields: 'userEnteredFormat(backgroundColor,textFormat)'
+            }
+          },
+          {
+            updateSheetProperties: {
+              properties: {
+                sheetId: defaultSheetId,
+                gridProperties: {
+                  frozenRowCount: 1
+                }
+              },
+              fields: 'gridProperties.frozenRowCount'
+            }
+          }
+        ]
+      }
+    });
+
+    // Make spreadsheet accessible with link
+    await drive.permissions.create({
+      fileId: spreadsheetId,
+      requestBody: {
+        role: 'writer',
+        type: 'anyone'
+      },
+      supportsAllDrives: isSharedDrive
+    });
+
+    console.log(`✅ Created spreadsheet: ${spreadsheetName}`);
+    return spreadsheetId;
+
+  } catch (error) {
+    console.error('Error finding/creating spreadsheet:', error.message);
+    throw error;
+  }
+}
+
+// Append a submission row to the monthly spreadsheet
+async function appendToMonthlySpreadsheet(formData, invoiceUrl, screenshotUrls) {
+  if (!sheets) {
+    throw new Error('Google Sheets not initialized');
+  }
+
+  try {
+    // Parse month and year from formData.period (e.g., "November 2024")
+    const periodParts = formData.period ? formData.period.split(' ') : [];
+    const month = periodParts[0] || new Date().toLocaleDateString('en-US', { month: 'long' });
+    const year = periodParts[1] || new Date().getFullYear().toString();
+
+    const brand = formData.brand === 'dr-dent' ? 'Dr Dent' : (formData.brand || 'Dr Dent');
+    const invoiceType = formData.invoiceType === 'retainer' ? 'Retainer' : 'Rewards';
+
+    // Find or create the monthly spreadsheet
+    const spreadsheetId = await findOrCreateMonthlySpreadsheet(brand, month, year, invoiceType);
+
+    // Get tier info
+    const brandConfig = getBrandConfig(formData.brand || 'dr-dent');
+    const tierInfo = brandConfig.retainerTiers[formData.selectedTier];
+    const tierDisplay = tierInfo
+      ? `${tierInfo.name} £${tierInfo.amount} ${tierInfo.videos} videos (${tierInfo.gmvRange} Dr Dent GMV)`
+      : formData.selectedTier || 'N/A';
+
+    // Calculate invoice amount
+    let invoiceAmount = 'N/A';
+    if (formData.invoiceType === 'rewards' && formData.rewardAmount) {
+      invoiceAmount = `£${formData.rewardAmount}`;
+    } else if (tierInfo) {
+      invoiceAmount = `£${tierInfo.amount}`;
+    }
+
+    // Format TikTok accounts
+    const tiktokAccounts = formData.accounts && formData.accounts.length > 0
+      ? formData.accounts.map(acc => acc.handle).join(', ')
+      : 'N/A';
+
+    // Format screenshots URLs
+    const screenshotsStr = screenshotUrls && screenshotUrls.length > 0
+      ? screenshotUrls.map(s => s.driveUrl || s.url).join(', ')
+      : 'N/A';
+
+    // Format bank details
+    const bankDetails = formData.accountName
+      ? `${formData.accountName}, Acc: ${formData.accountNumber || 'N/A'}, Sort: ${formData.sortCode || 'N/A'}`
+      : 'N/A';
+
+    // Format VAT status
+    let vatStatus = 'N/A';
+    if (formData.submissionType === 'business') {
+      vatStatus = formData.vatRegistered === 'yes'
+        ? `VAT Registered (${formData.vatNumber || 'No VAT Number'})`
+        : 'Not VAT Registered';
+    }
+
+    // Prepare row data
+    const timestamp = new Date().toLocaleString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+
+    const rowData = [
+      timestamp,
+      formData.name || 'N/A',
+      formData.email || 'N/A',
+      formData.discord || 'N/A',
+      tiktokAccounts,
+      formData.declaredGmv ? `£${formData.declaredGmv}` : 'N/A',
+      formData.firstTimeRetainer ? 'N/A (New Creator)' : (formData.videoCount || 'N/A'),
+      tierDisplay,
+      invoiceAmount,
+      invoiceUrl || 'N/A',
+      screenshotsStr,
+      formData.submissionType === 'individual' ? 'Individual' : 'Business',
+      vatStatus,
+      formData.address || 'N/A',
+      bankDetails
+    ];
+
+    // Append the row
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: spreadsheetId,
+      range: 'Responses!A:O',
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      resource: {
+        values: [rowData]
+      }
+    });
+
+    console.log(`✅ Appended submission to spreadsheet for ${month} ${year}`);
+    return {
+      spreadsheetId,
+      month,
+      year,
+      brand,
+      invoiceType
+    };
+
+  } catch (error) {
+    console.error('Error appending to spreadsheet:', error.message);
     throw error;
   }
 }
@@ -618,6 +887,18 @@ exports.handler = async (event, context) => {
       properties['Screenshots'] = { url: screenshotInfo[0].driveUrl };
     }
 
+    // Add submission to Google Sheets
+    let sheetResult = null;
+    const invoiceUrl = invoiceInfo?.driveUrl || uploadedInvoiceInfo?.driveUrl || null;
+
+    try {
+      sheetResult = await appendToMonthlySpreadsheet(formData, invoiceUrl, screenshotInfo);
+      console.log(`✅ Added to Google Sheet: ${sheetResult.brand} ${sheetResult.invoiceType} - ${sheetResult.month} ${sheetResult.year}`);
+    } catch (sheetError) {
+      console.error('Failed to add to Google Sheet:', sheetError.message);
+      // Continue with Notion submission even if Sheet fails
+    }
+
     const response = await notion.pages.create({
       parent: { type: "database_id", database_id: DATABASE_ID },
       properties: properties
@@ -638,7 +919,12 @@ exports.handler = async (event, context) => {
         invoiceTitle: invoiceTitle,
         invoiceGenerated: !!invoiceInfo,
         invoiceUrl: invoiceInfo?.driveUrl || uploadedInvoiceInfo?.driveUrl || null,
-        screenshotsUploaded: screenshotInfo.length
+        screenshotsUploaded: screenshotInfo.length,
+        sheet: sheetResult ? {
+          spreadsheetId: sheetResult.spreadsheetId,
+          month: sheetResult.month,
+          year: sheetResult.year
+        } : null
       })
     };
 
