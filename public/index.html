@@ -594,7 +594,7 @@
                         
                         <div class="form-group">
                             <label>Discord Username *</label>
-                            <input type="text" id="discordInput" placeholder="@yourusername" required>
+                            <input type="text" id="discordInput" placeholder="yourusername" required>
                             <small style="color: #6b7280; display: block; margin-top: 5px;">
                                 Used for communication about your invoice
                             </small>
@@ -758,11 +758,29 @@
                 <div class="tier-display" id="tierDisplay">
                     <h3 style="color: #dc2626; margin-bottom: 15px;">Select Your Retainer Tier</h3>
 
+                    <!-- Retainer Performance Fields -->
+                    <div class="form-grid" style="margin-bottom: 20px;">
+                        <div class="form-group">
+                            <label>GMV Generated Last Month (£) *</label>
+                            <input type="number" id="retainerGmvInput" placeholder="0.00" step="0.01" min="0" required>
+                            <small style="color: #6b7280; display: block; margin-top: 5px;">
+                                Your Dr Dent GMV from the previous month
+                            </small>
+                        </div>
+                        <div class="form-group" id="videoCountGroup">
+                            <label>No. of Videos Posted Last Month *</label>
+                            <input type="number" id="videoCountInput" placeholder="0" min="0" required>
+                            <small style="color: #6b7280; display: block; margin-top: 5px;">
+                                Number of Dr Dent videos you posted
+                            </small>
+                        </div>
+                    </div>
+
                     <!-- First Time Retainer Checkbox -->
                     <div style="margin-bottom: 20px; padding: 15px; background: #fef3c7; border-radius: 8px; border: 1px solid #fbbf24;">
                         <label style="display: flex; align-items: center; cursor: pointer;">
                             <input type="checkbox" id="firstTimeRetainer" onchange="toggleRetainerTiers()" style="margin-right: 10px; width: 18px; height: 18px;">
-                            <span style="font-weight: 600; color: #92400e;">First time retainer (Entry-level tiers)</span>
+                            <span style="font-weight: 600; color: #92400e;">First time retainer (Show entry-level tiers alongside standard tiers)</span>
                         </label>
                     </div>
 
@@ -857,14 +875,33 @@
                 </div>
 
                 <div class="tier-display" id="rewardAmountDisplay" style="display: none;">
-                    <h3 style="color: #dc2626; margin-bottom: 15px;">Reward Amount</h3>
-                    <p style="color: #6b7280; margin-bottom: 15px;">Enter the monetary amount for the reward you are claiming.</p>
-                    <div class="form-group" style="max-width: 300px; margin: 0 auto;">
-                        <label>Reward Amount (£) *</label>
-                        <input type="number" id="rewardAmountInput" placeholder="0.00" step="0.01" min="0">
-                        <small style="color: #6b7280; display: block; margin-top: 5px;">
-                            Enter the amount without the £ symbol
-                        </small>
+                    <h3 style="color: #dc2626; margin-bottom: 15px;">Rewards Campaign Details</h3>
+                    <p style="color: #6b7280; margin-bottom: 15px;">Enter the reward amount and your declared GMV for the campaign period.</p>
+
+                    <div class="form-grid" style="max-width: 800px; margin: 0 auto;">
+                        <div class="form-group">
+                            <label>Reward Amount (£) *</label>
+                            <input type="number" id="rewardAmountInput" placeholder="0.00" step="0.01" min="0">
+                            <small style="color: #6b7280; display: block; margin-top: 5px;">
+                                Enter the amount without the £ symbol
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Declared GMV (£) *</label>
+                            <input type="number" id="declaredGmvInput" placeholder="0.00" step="0.01" min="0">
+                            <small style="color: #6b7280; display: block; margin-top: 5px;">
+                                Your total GMV for the campaign period
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>No. of Videos Posted During Period *</label>
+                            <input type="number" id="rewardsVideoCountInput" placeholder="0" min="0">
+                            <small style="color: #6b7280; display: block; margin-top: 5px;">
+                                Number of videos you posted during the rewards period
+                            </small>
+                        </div>
                     </div>
                 </div>
 
@@ -912,7 +949,10 @@
                             <div class="form-grid">
                                 <div class="form-group">
                                     <label>TikTok Handle *</label>
-                                    <input type="text" id="handle1" placeholder="@yourusername" required>
+                                    <input type="text" id="handle1" placeholder="yourusername" required>
+                                    <small style="color: #ef4444; display: block; margin-top: 5px; font-weight: 600;">
+                                        IMPORTANT: Please submit your handle without the @ and in all lower case.
+                                    </small>
                                 </div>
                                 
                                 <div class="form-group">
@@ -1077,29 +1117,24 @@
         function selectMethod(method) {
             console.log('selectMethod called with:', method);
             invoiceMethod = method;
-            
+
             // Update method selection UI
             const options = document.querySelectorAll('.method-option');
             options.forEach(option => option.classList.remove('selected'));
             event.target.closest('.method-option').classList.add('selected');
-            
+
             // Update radio buttons
             const radios = document.querySelectorAll('input[name="method"]');
             radios.forEach(radio => radio.checked = false);
             event.target.closest('.method-option').querySelector('input').checked = true;
-            
-            // Show/hide fields based on method
-            const addressGroup = document.getElementById('addressGroup');
-            const bankGroups = ['bankGroup1', 'bankGroup2', 'bankGroup3', 'bankGroup4'];
+
+            // Show/hide only the invoice upload field based on method
+            // Address and bank details are ALWAYS required
             const invoiceUploadGroup = document.getElementById('invoiceUploadGroup');
-            
+
             if (method === 'upload') {
-                addressGroup.style.display = 'none';
-                bankGroups.forEach(id => document.getElementById(id).style.display = 'none');
                 invoiceUploadGroup.style.display = 'block';
             } else {
-                addressGroup.style.display = 'block';
-                bankGroups.forEach(id => document.getElementById(id).style.display = 'block');
                 invoiceUploadGroup.style.display = 'none';
             }
         }
@@ -1158,7 +1193,10 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label>TikTok Handle *</label>
-                        <input type="text" id="handle${accountCount}" placeholder="@yourusername" required>
+                        <input type="text" id="handle${accountCount}" placeholder="yourusername" required>
+                        <small style="color: #ef4444; display: block; margin-top: 5px; font-weight: 600;">
+                            IMPORTANT: Please submit your handle without the @ and in all lower case.
+                        </small>
                     </div>
                     
                     <div class="form-group">
@@ -1206,32 +1244,101 @@
         function submitInvoice() {
             console.log('=== SUBMIT INVOICE DEBUG START ===');
             console.log('submitInvoice called');
-            
+
             try {
-                // Check if tier is selected for retainer type
-                console.log('Checking tier selection...');
-                const selectedTier = document.querySelector('input[name="tier"]:checked');
                 const invoiceType = document.getElementById('invoiceTypeSelect').value;
                 console.log('Invoice type:', invoiceType);
-                console.log('Selected tier:', selectedTier ? selectedTier.value : 'none');
-                
-                if (!selectedTier && invoiceType === 'retainer') {
-                    alert('Please select a retainer tier before submitting.');
+
+                // ========== COMMON REQUIRED FIELDS ==========
+                const nameInput = document.getElementById('nameInput');
+                const emailInput = document.getElementById('emailInput');
+                const discordInput = document.getElementById('discordInput');
+                const addressInput = document.getElementById('addressInput');
+                const bankInput = document.getElementById('bankInput');
+                const accountNameInput = document.getElementById('accountNameInput');
+                const accountNumberInput = document.getElementById('accountNumberInput');
+                const sortCodeInput = document.getElementById('sortCodeInput');
+
+                // Validate common required fields
+                if (!nameInput || !nameInput.value.trim()) {
+                    alert('Please enter your name.');
                     return;
                 }
-                
-                // Check if reward amount is provided for rewards type
-                console.log('Checking reward amount...');
+                if (!emailInput || !emailInput.value.trim()) {
+                    alert('Please enter your email address.');
+                    return;
+                }
+                if (!discordInput || !discordInput.value.trim()) {
+                    alert('Please enter your Discord username.');
+                    return;
+                }
+                if (!addressInput || !addressInput.value.trim()) {
+                    alert('Please enter your address.');
+                    return;
+                }
+                if (!bankInput || !bankInput.value.trim()) {
+                    alert('Please enter your bank name.');
+                    return;
+                }
+                if (!accountNameInput || !accountNameInput.value.trim()) {
+                    alert('Please enter your account name.');
+                    return;
+                }
+                if (!accountNumberInput || !accountNumberInput.value.trim()) {
+                    alert('Please enter your account number.');
+                    return;
+                }
+                if (!sortCodeInput || !sortCodeInput.value.trim()) {
+                    alert('Please enter your sort code.');
+                    return;
+                }
+
+                // ========== RETAINER-SPECIFIC VALIDATION ==========
+                if (invoiceType === 'retainer') {
+                    const selectedTier = document.querySelector('input[name="tier"]:checked');
+                    const retainerGmvInput = document.getElementById('retainerGmvInput');
+                    const videoCountInput = document.getElementById('videoCountInput');
+                    const firstTimeRetainer = document.getElementById('firstTimeRetainer')?.checked;
+
+                    if (!selectedTier) {
+                        alert('Please select a retainer tier before submitting.');
+                        return;
+                    }
+                    if (!retainerGmvInput || !retainerGmvInput.value) {
+                        alert('Please enter your GMV generated last month.');
+                        return;
+                    }
+                    // Video count is required unless first time retainer
+                    if (!firstTimeRetainer && (!videoCountInput || !videoCountInput.value)) {
+                        alert('Please enter the number of videos posted last month.');
+                        return;
+                    }
+                }
+
+                // ========== REWARDS-SPECIFIC VALIDATION ==========
+                if (invoiceType === 'rewards') {
+                    const rewardAmountInput = document.getElementById('rewardAmountInput');
+                    const declaredGmvInput = document.getElementById('declaredGmvInput');
+                    const rewardsVideoCountInput = document.getElementById('rewardsVideoCountInput');
+
+                    if (invoiceMethod === 'generate' && (!rewardAmountInput || !rewardAmountInput.value)) {
+                        alert('Please enter a reward amount for rewards invoices.');
+                        return;
+                    }
+                    if (!declaredGmvInput || !declaredGmvInput.value) {
+                        alert('Please enter your declared GMV for rewards invoices.');
+                        return;
+                    }
+                    if (!rewardsVideoCountInput || !rewardsVideoCountInput.value) {
+                        alert('Please enter the number of videos posted during the rewards period.');
+                        return;
+                    }
+                }
+
+                // For backwards compatibility, set these variables
+                const selectedTier = document.querySelector('input[name="tier"]:checked');
                 const rewardAmountInput = document.getElementById('rewardAmountInput');
-                console.log('Reward amount input exists:', !!rewardAmountInput);
-                console.log('Reward amount value:', rewardAmountInput ? rewardAmountInput.value : 'input not found');
-                
-                if (invoiceType === 'rewards' && 
-                    invoiceMethod === 'generate' && 
-                    (!rewardAmountInput || !rewardAmountInput.value)) {
-                    alert('Please enter a reward amount for rewards invoices.');
-                    return;
-                }
+                const declaredGmvInput = document.getElementById('declaredGmvInput');
                 
                 console.log('Building form data...');
                 // Collect all form data
@@ -1248,12 +1355,18 @@
                     accountName: document.getElementById('accountNameInput')?.value,
                     accountNumber: document.getElementById('accountNumberInput')?.value,
                     sortCode: document.getElementById('sortCodeInput')?.value,
-                    brand: 'Dr Dent',
+                    brand: 'dr-dent',
                     invoiceType: invoiceType,
                     period: `${document.getElementById('monthSelect').value} ${document.getElementById('yearSelect').value}`,
                     selectedTier: selectedTier ? selectedTier.value : null,
                     firstTimeRetainer: document.getElementById('firstTimeRetainer')?.checked || false,
+                    // Retainer-specific fields
+                    retainerGmv: document.getElementById('retainerGmvInput')?.value || null,
+                    videoCount: document.getElementById('videoCountInput')?.value || null,
+                    // Rewards-specific fields
                     rewardAmount: rewardAmountInput ? rewardAmountInput.value : null,
+                    declaredGmv: document.getElementById('declaredGmvInput')?.value || null,
+                    rewardsVideoCount: document.getElementById('rewardsVideoCountInput')?.value || null,
                     accounts: [],
                     screenshots: []
                 };
@@ -1387,9 +1500,11 @@
             allTierRadios.forEach(radio => radio.checked = false);
 
             if (firstTimeCheckbox.checked) {
-                standardTiers.style.display = 'none';
+                // Show BOTH standard and entry-level tiers when first-time is checked
+                standardTiers.style.display = 'block';
                 entryLevelTiers.style.display = 'block';
             } else {
+                // Only show standard tiers when unchecked
                 standardTiers.style.display = 'block';
                 entryLevelTiers.style.display = 'none';
             }

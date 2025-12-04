@@ -136,10 +136,10 @@ async function uploadToGoogleDrive(buffer, filename, brand, month, type, mimeTyp
       throw new Error('GOOGLE_DRIVE_FOLDER_ID not configured');
     }
 
-    // Create folder structure: Invoices / Brand / Month / Type
-    const invoicesFolderId = await findOrCreateFolder('Invoices', rootFolderId);
-    const brandFolderId = await findOrCreateFolder(brand, invoicesFolderId);
-    const monthFolderId = await findOrCreateFolder(month, brandFolderId);
+    // Create folder structure: Brand / Invoices / Month / Type
+    const brandFolderId = await findOrCreateFolder(brand, rootFolderId);
+    const invoicesFolderId = await findOrCreateFolder('Invoices', brandFolderId);
+    const monthFolderId = await findOrCreateFolder(month, invoicesFolderId);
     const typeFolderId = await findOrCreateFolder(type, monthFolderId);
 
     const bufferStream = new stream.PassThrough();
@@ -195,13 +195,17 @@ async function findOrCreateMonthlySpreadsheet(brand, month, year, invoiceType) {
     throw new Error('Google Sheets/Drive not initialized');
   }
 
-  const spreadsheetName = `${brand} ${invoiceType} Invoice Submission ${month} ${year} (Responses)`;
+  // Spreadsheet name without brand prefix (since it's inside the brand folder)
+  const spreadsheetName = `${invoiceType} Invoice Submission ${month} ${year} (Responses)`;
   const rootFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
   const isSharedDrive = process.env.GOOGLE_DRIVE_IS_SHARED_DRIVE === 'true';
 
   try {
-    // Search for existing spreadsheet in the folder
-    const searchQuery = `name='${spreadsheetName}' and '${rootFolderId}' in parents and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`;
+    // Create brand folder first, spreadsheets go inside it
+    const brandFolderId = await findOrCreateFolder(brand, rootFolderId);
+
+    // Search for existing spreadsheet in the brand folder
+    const searchQuery = `name='${spreadsheetName}' and '${brandFolderId}' in parents and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`;
 
     const searchResponse = await drive.files.list({
       q: searchQuery,
@@ -216,13 +220,13 @@ async function findOrCreateMonthlySpreadsheet(brand, month, year, invoiceType) {
       return searchResponse.data.files[0].id;
     }
 
-    // Create new spreadsheet directly in the target folder using Drive API
+    // Create new spreadsheet directly in the brand folder using Drive API
     console.log(`📊 Creating new spreadsheet: ${spreadsheetName}`);
 
     const fileMetadata = {
       name: spreadsheetName,
       mimeType: 'application/vnd.google-apps.spreadsheet',
-      parents: [rootFolderId]
+      parents: [brandFolderId]
     };
 
     const createdFile = await drive.files.create({
@@ -406,14 +410,32 @@ async function appendToMonthlySpreadsheet(formData, invoiceUrl, screenshotUrls) 
       second: '2-digit'
     });
 
+    // Determine GMV to display (use retainerGmv for retainers, declaredGmv for rewards)
+    let gmvDisplay = 'N/A';
+    if (formData.invoiceType === 'retainer' && formData.retainerGmv) {
+      gmvDisplay = `£${formData.retainerGmv}`;
+    } else if (formData.declaredGmv) {
+      gmvDisplay = `£${formData.declaredGmv}`;
+    }
+
+    // Determine video count to display
+    let videoCountDisplay = 'N/A';
+    if (formData.firstTimeRetainer) {
+      videoCountDisplay = 'N/A (New Creator)';
+    } else if (formData.invoiceType === 'retainer' && formData.videoCount) {
+      videoCountDisplay = formData.videoCount;
+    } else if (formData.invoiceType === 'rewards' && formData.rewardsVideoCount) {
+      videoCountDisplay = formData.rewardsVideoCount;
+    }
+
     const rowData = [
       timestamp,
       formData.name || 'N/A',
       formData.email || 'N/A',
       formData.discord || 'N/A',
       tiktokAccounts,
-      formData.declaredGmv ? `£${formData.declaredGmv}` : 'N/A',
-      formData.firstTimeRetainer ? 'N/A (New Creator)' : (formData.videoCount || 'N/A'),
+      gmvDisplay,
+      videoCountDisplay,
       tierDisplay,
       invoiceAmount,
       invoiceUrl || 'N/A',
